@@ -23,10 +23,12 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
         {
             if (!container.IsRegistered<LoggerConfiguration>())
             {
+                container.RegisterType<Serilog.Core.Logger>(new ContainerControlledLifetimeManager(),
+                    new InjectionFactory(c => c.Resolve<LoggerConfiguration>().CreateLogger()));
 
                 container.RegisterInstance(new LoggerConfiguration());
                 container.RegisterType<ILoggerFactory>(new ContainerControlledLifetimeManager(),
-                     new InjectionFactory((c) => new LoggerFactory().AddSerilog(c.Resolve<LoggerConfiguration>().CreateLogger())));
+                     new InjectionFactory((c) => new LoggerFactory().AddSerilog(c.Resolve< Serilog.Core.Logger>())));
             }
 
             configure(container.Resolve<LoggerConfiguration>());

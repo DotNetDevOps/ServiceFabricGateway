@@ -67,6 +67,7 @@ namespace SInnovations.ServiceFabric.Storage.Extensions
                 catch (Exception ex)
                 {
                     Console.WriteLine(ex.ToString());
+                    throw;
                 }
             }
 

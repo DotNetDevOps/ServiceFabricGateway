@@ -160,13 +160,21 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                                 //{
                                  
                                 //});
+                               
                             }
 
                             if (Container.IsRegistered<LoggerConfiguration>())
                             {
-                                builder.ConfigureLogging((hostingContext, logging) =>
+                                Container.RegisterType<SerilogLoggerProvider>(new ContainerControlledLifetimeManager(), new InjectionFactory((c) =>
                                 {
-                                    logging.AddProvider(new SerilogLoggerProvider(Container.Resolve<LoggerConfiguration>().CreateLogger(), false));
+                                     var seriologger =new SerilogLoggerProvider(c.Resolve<Serilog.Core.Logger>(),false);
+                                    return seriologger;
+
+                                }));
+                               
+                                builder.ConfigureLogging((hostingContext, logging) =>
+                                {                                   
+                                    logging.AddProvider(Container.Resolve<SerilogLoggerProvider>());
                                 });
                             }
 

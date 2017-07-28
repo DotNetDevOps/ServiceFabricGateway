@@ -31,10 +31,10 @@
     <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.0.0-preview2-final" />
     <PackageReference Include="Microsoft.ServiceFabric" Version="5.6.220" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
-    <PackageReference Include="S-Innovations.Unity.AspNetCore2" Version="1.0.0-pre-2017072702" />
+    <PackageReference Include="S-Innovations.Unity.AspNetCore2" Version="1.0.0-pre-2017072803" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="1.4.0" />
     <PackageReference Include="Serilog.Sinks.ApplicationInsights" Version="2.2.1" />
-    <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="1.0.0-pre-2017072702"></PackageReference>
+    <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="1.0.0-pre-2017072803"></PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.HttpOverrides" Version="2.0.0-preview2-final" />
     <PackageReference Include="System.Threading.Tasks" Version="4.3.0" />
   </ItemGroup>
