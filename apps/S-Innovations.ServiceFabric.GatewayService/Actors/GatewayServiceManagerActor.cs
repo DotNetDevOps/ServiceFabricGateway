@@ -12,6 +12,9 @@ using System.Fabric;
 using System.Fabric.Description;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Storage.Blob;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
 
 namespace SInnovations.ServiceFabric.GatewayService.Actors
 {
@@ -118,7 +121,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                 var certInfo = await StateManager.GetStateAsync<CertGenerationState>($"cert_{hostname}");
 
 
-                if ((await Task.WhenAll(certBlob.ExistsAsync() , keyBlob.ExistsAsync() , fullchain.ExistsAsync())).Any(t=>t == false))
+                if ((await Task.WhenAll(certBlob.ExistsAsync() , keyBlob.ExistsAsync() , fullchain.ExistsAsync())).Any(t=>t == false) ||
+                    await CertExpiredAsync(certBlob))
                 {  
                     try
                     {
@@ -165,6 +169,13 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                 await StateManager.SetStateAsync(STATE_LAST_UPDATED_NAME, DateTimeOffset.UtcNow);
             }
 
+        }
+
+        private async Task<bool> CertExpiredAsync(CloudBlockBlob certBlob)
+        {
+            X509Certificate2 clientCertificate =
+                 new X509Certificate2(Encoding.UTF8.GetBytes( await certBlob.DownloadTextAsync()));
+            return clientCertificate.NotAfter.ToUniversalTime() < DateTime.UtcNow;
         }
 
         public async Task RegisterGatewayServiceAsync(GatewayServiceRegistrationData data)
