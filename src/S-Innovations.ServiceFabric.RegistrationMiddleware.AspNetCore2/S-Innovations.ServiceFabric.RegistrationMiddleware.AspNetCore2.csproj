@@ -21,12 +21,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\S-Innovations.ServiceFabric.Gateway.Common\S-Innovations.ServiceFabric.Gateway.Common.csproj" />
-    <!--<ProjectReference Include="C:\dev\sinnovations\S-Innovations.ServiceFabric.Unity\src\S-Innovations.ServiceFabric.Unity\S-Innovations.ServiceFabric.Unity.csproj" />-->
-    
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.0.0-preview2-final" />
     <PackageReference Include="Microsoft.ServiceFabric" Version="5.6.220" />
@@ -37,6 +31,10 @@
     <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="1.0.0-pre-2017072803"></PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.HttpOverrides" Version="2.0.0-preview2-final" />
     <PackageReference Include="System.Threading.Tasks" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\S-Innovations.ServiceFabric.Gateway.Common\S-Innovations.ServiceFabric.Gateway.Common.csproj" />
   </ItemGroup>
 
 </Project>
