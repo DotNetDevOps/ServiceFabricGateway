@@ -147,10 +147,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             sb.AppendLine("events {\n\tworker_connections  1024;\n}");
             sb.AppendLine("http {");
 
-
+           
             sb.AppendLine();
 
-            
+            sb.AppendLine("\tclient_max_body_size 100m;");
 
 
             File.WriteAllText("mime.types", WriteMimeTypes(sb, "mime.types").ToString());
