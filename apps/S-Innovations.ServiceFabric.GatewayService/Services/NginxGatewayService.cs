@@ -324,7 +324,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                                 var url = a.BackendPath;
                                 url = "http://" + upstreamName;
 
-                                WriteProxyPassLocation(2, a.ReverseProxyLocation, url, sb, $"\"{a.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{a.ServiceVersion}\"", upstreamName);
+                                WriteProxyPassLocation(2, a.ReverseProxyLocation, url, sb, $"\"{a.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{a.ServiceVersion}\"", upstreamName,a.CacheOptions);
                             }
                         }
 
@@ -357,7 +357,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         }
 
-        private static void WriteProxyPassLocation(int level, string location, string url, StringBuilder sb,string uniquekey, string upstreamName)
+        private static void WriteProxyPassLocation(int level, string location, string url, StringBuilder sb,string uniquekey, string upstreamName, ProxyPassCacheOptions cacheOptions)
         {
 
             var tabs = string.Join("", Enumerable.Range(0, level + 1).Select(r => "\t"));
@@ -378,8 +378,15 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 }
                 else
                 {
+                   
                     sb.AppendLine($"{tabs}proxy_pass {url.TrimEnd('/')}/;");
 
+                  
+
+                }
+
+                if (cacheOptions?.Enabled ?? false)
+                {
                     sb.AppendLine($"{tabs}proxy_cache {upstreamName};");
 
                     sb.AppendLine($"{tabs}proxy_cache_revalidate on;");
@@ -388,8 +395,6 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                     sb.AppendLine($"{tabs}proxy_cache_valid      200  1d;");
                     sb.AppendLine($"{tabs}proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;");
-
-
                 }
 
 

@@ -4,7 +4,7 @@
     <AssemblyTitle>ServiceFabric Gateway Registration Middleware for AspNetCore</AssemblyTitle>
     <VersionPrefix>1.0.1</VersionPrefix>
     <TargetFramework>net462</TargetFramework>
-    <DefineConstants>$(DefineConstants);NETCORE</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NETCORE;NET462;NETCORE10</DefineConstants>
     <AssemblyName>S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore</AssemblyName>
     <PackageId>S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore</PackageId>
     <PackageTags>S-Innovations ServiceFabric Gateway</PackageTags>

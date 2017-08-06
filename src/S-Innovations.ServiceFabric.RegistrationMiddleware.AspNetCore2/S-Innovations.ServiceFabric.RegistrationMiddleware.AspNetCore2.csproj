@@ -4,7 +4,7 @@
     <AssemblyTitle>ServiceFabric Gateway Registration Middleware for AspNetCore</AssemblyTitle>
     <VersionPrefix>1.0.1</VersionPrefix>
     <TargetFrameworks>net462</TargetFrameworks>
-    <DefineConstants>$(DefineConstants);NETCORE</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NETCORE;NET462;NETCORE20</DefineConstants>
     <AssemblyName>S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore</AssemblyName>
     <PackageId>S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore2</PackageId>
     <PackageTags>S-Innovations ServiceFabric Gateway</PackageTags>
@@ -17,7 +17,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
 
   <ItemGroup>
+    <Compile Include="..\S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore\Communication\CustomKestrelCommunicationListener.cs" Link="Communication\CustomKestrelCommunicationListener.cs" />
+    <Compile Include="..\S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore\Extensions\KestrelHostingExtensions.cs" Link="Extensions\KestrelHostingExtensions.cs" />
     <Compile Include="..\S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore\FabricContainer.cs" Link="FabricContainer.cs" />
+    <Compile Include="..\S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore\Model\GatewayOptions.cs" Link="Model\GatewayOptions.cs" />
+    <Compile Include="..\S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore\Model\KestrelHostingServiceOptions.cs" Link="Model\KestrelHostingServiceOptions.cs" />
+    <Compile Include="..\S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore\Services\KestrelHostingAddresss.cs" Link="Services\KestrelHostingAddresss.cs" />
+    <Compile Include="..\S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore\Services\KestrelHostingService.cs" Link="Services\KestrelHostingService.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,6 +41,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\S-Innovations.ServiceFabric.Gateway.Common\S-Innovations.ServiceFabric.Gateway.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Communication\" />
+    <Folder Include="Extensions\" />
   </ItemGroup>
 
 </Project>

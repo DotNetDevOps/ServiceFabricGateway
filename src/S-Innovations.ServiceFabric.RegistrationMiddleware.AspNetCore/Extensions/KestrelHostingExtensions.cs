@@ -1,19 +1,15 @@
 ﻿using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Practices.Unity;
 using Microsoft.ServiceFabric.Services.Remoting;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Serilog;
+using SInnovations.ServiceFabric.Gateway.Common.Model;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services;
 using SInnovations.ServiceFabric.Unity;
 using SInnovations.Unity.AspNetCore;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions
 {
@@ -23,10 +19,12 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
         {
             if (!container.IsRegistered<LoggerConfiguration>())
             {
+                container.RegisterType<Serilog.Core.Logger>(new ContainerControlledLifetimeManager(),
+                    new InjectionFactory(c => c.Resolve<LoggerConfiguration>().CreateLogger()));
 
                 container.RegisterInstance(new LoggerConfiguration());
                 container.RegisterType<ILoggerFactory>(new ContainerControlledLifetimeManager(),
-                     new InjectionFactory((c) => new LoggerFactory().AddSerilog(c.Resolve<LoggerConfiguration>().CreateLogger())));
+                     new InjectionFactory((c) => new LoggerFactory().AddSerilog(c.Resolve<Serilog.Core.Logger>())));
             }
 
             configure(container.Resolve<LoggerConfiguration>());

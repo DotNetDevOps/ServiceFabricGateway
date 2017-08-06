@@ -13,5 +13,6 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model
         public string ReverseProxyLocation { get; set; }
         public string ServerName { get; set; }
         public SslOptions Ssl { get; set; } = new SslOptions();
+        public ProxyPassCacheOptions CacheOptions { get; set; } = new ProxyPassCacheOptions();
     }
 }

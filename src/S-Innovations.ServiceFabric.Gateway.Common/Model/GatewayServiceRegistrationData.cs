@@ -7,6 +7,12 @@ using System.Threading.Tasks;
 namespace SInnovations.ServiceFabric.Gateway.Model
 {
     [DataContract]
+    public class ProxyPassCacheOptions
+    {
+        [DataMember]
+        public bool Enabled { get; set; }
+    }
+    [DataContract]
     public class GatewayServiceRegistrationData
     {
         [DataMember]
@@ -30,5 +36,8 @@ namespace SInnovations.ServiceFabric.Gateway.Model
 
         [DataMember]
         public string ServiceVersion { get; set; }
+
+        [DataMember]
+        public ProxyPassCacheOptions CacheOptions { get; set; } = new ProxyPassCacheOptions();
     }
 }

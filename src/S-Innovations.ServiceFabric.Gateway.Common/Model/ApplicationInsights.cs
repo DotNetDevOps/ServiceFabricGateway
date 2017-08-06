@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model
+namespace SInnovations.ServiceFabric.Gateway.Common.Model
 {
    public class ApplicationInsights
     {

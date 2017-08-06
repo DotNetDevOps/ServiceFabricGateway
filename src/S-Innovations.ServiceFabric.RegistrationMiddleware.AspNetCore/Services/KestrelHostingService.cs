@@ -12,7 +12,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Practices.Unity;
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Client;
-using Microsoft.ServiceFabric.Services.Communication.AspNetCore;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Runtime;
 using SInnovations.ServiceFabric.Gateway.Actors;
@@ -29,26 +28,12 @@ using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Communication;
 using Microsoft.Extensions.Options;
 using SInnovations.Unity.AspNetCore;
+using Serilog.Extensions.Logging;
+using SInnovations.ServiceFabric.Gateway.Common.Model;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 {
 
-    
-   
-
-    
-
-   
-
-   
-   
-
-    
-    
-    public class KestrelHostingAddresss
-    {
-        public string Url { get; set; }
-    }
     public class KestrelHostingService : StatelessService
     {
         public Action<IWebHostBuilder> WebBuilderConfiguration { get; set; }
@@ -82,10 +67,10 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
             services.AddSingleton(Container);
             services.AddSingleton<IServiceProviderFactory<IServiceCollection>>(new UnityServiceProviderFactory(Container));
             services.AddSingleton<IStartupFilter>(new UseForwardedHeadersStartupFilter($"{this.Context.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{Context.CodePackageActivationContext.CodePackageVersion}"));
-           
+
         }
 
-        
+
         /// <summary>
         /// Optional override to create listeners (like tcp, http) for this service instance.
         /// </summary>
@@ -99,15 +84,16 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                     new CustomKestrelCommunicationListener(serviceContext, Options.ServiceEndpointName, (url,listener) =>
                     {
                         try {
-                          
+
                             _logger.LogInformation("building kestrel app for {url} in {gatewayKey}",url,Options.GatewayOptions.Key);
 
-                            
+
 
                             var context =serviceContext.CodePackageActivationContext;
                             var config = context.GetConfigurationPackageObject("Config");
 
-                            var builder=new WebHostBuilder().UseKestrel()
+                            var builder=new WebHostBuilder()
+                                .UseKestrel()
                                 .ConfigureServices(ConfigureServices)
                              //   .UseCustomServiceFabricIntegration(listener as CustomKestrelCommunicationListener , ServiceFabricIntegrationOptions.UseUniqueServiceUrl)
                              //   .ConfigureServices((services)=>{ services.AddTransient<IStartupFilter, UseForwardedHeadersStartupFilter>(); })
@@ -115,17 +101,17 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
                             if (Container.IsRegistered<IConfigureOptions<ApplicationInsights>>())
                             {
-                                    builder.UseApplicationInsights(Container.Resolve<ApplicationInsights>().InstrumentationKey);
+                                 builder.UseApplicationInsights(Container.Resolve<ApplicationInsights>().InstrumentationKey);
                             }
-                        
 
-                            
+
+
                             builder.ConfigureServices((services) =>
                             {
-                                services.AddSingleton(listener);                                
+                                services.AddSingleton(listener);
                                 services.AddSingleton((sp)=> new KestrelHostingAddresss{Url = this.GetAddresses()["kestrel"]  });
                             });
-                            
+
                             if (Container.IsRegistered<IConfiguration>())
                             {
                                  _logger.LogInformation("UseConfiguration for {gatewayKey}", Options.GatewayOptions.Key);
@@ -150,11 +136,31 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
                             }
 
+#if NETCORE10
                             if (Container.IsRegistered<ILoggerFactory>())
                             {
                                 _logger.LogInformation("UseLoggerFactory for {gatewayKey}", Options.GatewayOptions.Key);
                                 builder.UseLoggerFactory(Container.Resolve<ILoggerFactory>());
                             }
+#endif
+
+#if NETCORE20
+
+                            if (Container.IsRegistered<LoggerConfiguration>())
+                            {
+                                Container.RegisterType<SerilogLoggerProvider>(new ContainerControlledLifetimeManager(), new InjectionFactory((c) =>
+                                {
+                                     var seriologger =new SerilogLoggerProvider(c.Resolve<Serilog.Core.Logger>(),false);
+                                    return seriologger;
+
+                                }));
+                               
+                                builder.ConfigureLogging((hostingContext, logging) =>
+                                {                                   
+                                    logging.AddProvider(Container.Resolve<SerilogLoggerProvider>());
+                                });
+                            }
+#endif
 
 
                             ConfigureBuilder(builder);
@@ -195,7 +201,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
 
                 await base.OnOpenAsync(cancellationToken);
-                
+
                 await RegisterGatewayServiceAsync(gateway, backAddress, Options.GatewayOptions);
 
                 foreach (var gw in Options.AdditionalGateways)
@@ -222,7 +228,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                 Ssl = gw.Ssl,
                 BackendPath = backAddress,
                 ServiceName = Context.ServiceName,
-                ServiceVersion = Context.CodePackageActivationContext.GetServiceManifestVersion()
+                ServiceVersion = Context.CodePackageActivationContext.GetServiceManifestVersion(),
+                CacheOptions = gw.CacheOptions
             });
         }
     }
