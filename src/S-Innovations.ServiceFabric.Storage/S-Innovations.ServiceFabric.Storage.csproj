@@ -13,10 +13,10 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="1.1.2" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.AzureStorage" Version="1.0.2" />
-    <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="3.14.2" />
-    <PackageReference Include="Microsoft.ServiceFabric" Version="5.6.220" />
-    <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="1.0.0-pre-2017072803" />
-    <PackageReference Include="WindowsAzure.Storage" Version="8.2.1" />
+    <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="3.16.0" />
+    <PackageReference Include="Microsoft.ServiceFabric" Version="5.7.198" />
+    <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="1.0.0-pre-2017081001" />
+    <PackageReference Include="WindowsAzure.Storage" Version="8.3.0" />
   </ItemGroup>
 
 </Project>
