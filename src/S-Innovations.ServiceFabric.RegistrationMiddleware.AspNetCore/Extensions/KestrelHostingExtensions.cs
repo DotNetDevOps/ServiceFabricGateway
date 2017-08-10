@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Hosting;
+﻿using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Practices.Unity;
 using Microsoft.ServiceFabric.Services.Remoting;
@@ -41,9 +42,10 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
             {
 
                 logConfiguration.WriteTo.ApplicationInsightsTraces(container.Resolve<ApplicationInsights>().InstrumentationKey, Serilog.Events.LogEventLevel.Information);
+
+               
             });
-
-
+          
 
             return container;
         }
