@@ -24,6 +24,9 @@ using Newtonsoft.Json.Linq;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Practices.Unity;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
 
 namespace SInnovations.ServiceFabric.GatewayService
 {
@@ -210,7 +213,13 @@ namespace SInnovations.ServiceFabric.GatewayService
             {
                 app.UseDeveloperExceptionPage();
             }
-             
+
+            //var telemetryConfiguration = app.ApplicationServices.GetService<TelemetryConfiguration>();
+            //var builder = telemetryConfiguration.TelemetryProcessorChainBuilder;
+           
+            //builder.Use((next) => new CustomTelemetryProcessor(next));
+            //builder.Build();
+
             app.UseRouter(router =>
             {
                 router.MapGet("services", async (HttpContext context) =>
@@ -242,4 +251,23 @@ namespace SInnovations.ServiceFabric.GatewayService
         }
     }
 
+    //internal class CustomTelemetryProcessor : ITelemetryProcessor
+    //{
+    //    private ITelemetryProcessor next;
+
+    //    public CustomTelemetryProcessor(ITelemetryProcessor next)
+    //    {
+    //        this.next = next;
+    //    }
+
+    //    public void Process(ITelemetry item)
+    //    {
+    //        if(item is TraceTelemetry trace && request.)
+    //        {
+                
+    //        }
+
+    //        next.Process(item);
+    //    }
+    //}
 }
