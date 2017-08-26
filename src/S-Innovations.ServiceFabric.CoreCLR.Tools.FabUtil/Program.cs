@@ -21,7 +21,11 @@ namespace SInnovations.ServiceFabric.CoreCLR.Tools.FabUtil
 
            //TODO nuget versioning from current dependencies.
            var fileName = Path.Combine(basePath, @".nuget\packages\Microsoft.ServiceFabric.Actors\2.7.198\build\FabActUtil.exe");
-          
+            Console.WriteLine(fileName);
+            if (!File.Exists(fileName))
+            {
+                throw new Exception("FabActUtil not found");
+            }
 
             // Fires up a new process to run inside this one
             var process = Process.Start(new ProcessStartInfo
