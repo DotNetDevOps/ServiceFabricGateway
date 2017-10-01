@@ -27,6 +27,9 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.ServiceFabric.Services.Remoting.Client;
+using SInnovations.ServiceFabric.Gateway.Common.Actors;
+using SInnovations.ServiceFabric.Gateway.Common.Model;
 
 namespace SInnovations.ServiceFabric.GatewayService
 {
@@ -241,6 +244,40 @@ namespace SInnovations.ServiceFabric.GatewayService
                     await a.DeleteGatewayServiceAsync(context.GetRouteValue("key") as string,context.RequestAborted);
 
                     context.Response.StatusCode = 204;
+                });
+
+                router.MapGet(".well-known/acme-challenge", async (request,response,route)=>
+                {
+                    var path = request.Path.ToUriComponent();
+                    if (path?.Length > 1 && path.StartsWith("/"))
+                    {
+                        var _fabricClient = new FabricClient();
+                        var applicationName = request.HttpContext.RequestServices.GetService<ICodePackageActivationContext>().ApplicationName;
+                        var actorServiceUri = new Uri($"{applicationName}/GatewayServiceManagerActorService");
+                        var partitions = new List<long>();
+                        var servicePartitionList = await _fabricClient.QueryManager.GetPartitionListAsync(actorServiceUri);
+                        foreach (var servicePartition in servicePartitionList)
+                        {
+                            var partitionInformation = servicePartition.PartitionInformation as Int64RangePartitionInformation;
+                            partitions.Add(partitionInformation.LowKey);
+                        }
+
+                        var serviceProxyFactory = new ServiceProxyFactory();
+
+                        var actors = new Dictionary<long, DateTimeOffset>();
+                        foreach (var partition in partitions)
+                        {
+                            var actorService = serviceProxyFactory.CreateServiceProxy<IGatewayServiceManagerActorService>(actorServiceUri, new ServicePartitionKey(partition));
+
+                            CertGenerationState[] certs = await actorService.GetCerts(request.HttpContext.RequestAborted);
+                            
+                        }
+
+
+
+                        response.ContentType = "plain/text";
+                        await response.WriteAsync($"{path.Substring(1)}.<thumbprint>");
+                    }
                 });
             });
   

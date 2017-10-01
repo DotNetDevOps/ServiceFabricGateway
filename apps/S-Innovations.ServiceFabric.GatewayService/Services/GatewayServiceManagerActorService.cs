@@ -8,6 +8,7 @@ using SInnovations.ServiceFabric.GatewayService.Actors;
 using System;
 using System.Collections.Generic;
 using System.Fabric;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -114,6 +115,34 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             return actors;
         }
 
+        public async Task<CertGenerationState[]> GetCerts(CancellationToken cancellationToken)
+        {
+
+            var result = new List<CertGenerationState>();
+            ContinuationToken continuationToken = null;
+            do
+            {
+
+                var page = await this.StateProvider.GetActorsAsync(100, continuationToken, cancellationToken);
+
+                foreach (var actor in page.Items)
+                {
+
+                    var names = await this.StateProvider.EnumerateStateNamesAsync(actor, cancellationToken);
+
+                    result.AddRange(await Task.WhenAll(names.Where(name => name.StartsWith("cert_"))
+                        .Select(name => this.StateProvider.LoadStateAsync< CertGenerationState>(actor,name,cancellationToken))));
+                    
+
+                    
+
+                }
+
+                continuationToken = page.ContinuationToken;
+            }
+            while (continuationToken != null);
+            return result.ToArray();
+        }
         public async Task<CertGenerationState> GetCertGenerationInfoAsync(string hostname, SslOptions options, CancellationToken cancellationToken)
         {
             ContinuationToken continuationToken = null;

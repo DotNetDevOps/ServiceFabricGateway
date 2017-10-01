@@ -14,5 +14,7 @@ namespace SInnovations.ServiceFabric.Gateway.Model
         public string SignerEmail { get; set; }
         [DataMember]
         public bool Enabled { get; set; }
+        [DataMember]
+        public bool UseHttp01Challenge { get; set; }
     }
 }

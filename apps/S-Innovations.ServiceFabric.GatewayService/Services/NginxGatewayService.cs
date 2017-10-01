@@ -261,6 +261,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                     sb.AppendLine("\tserver {");
                     {
+
+
+
+
                         sb.AppendLine($"\t\tlisten       {endpoint.Port};");
                         if (sslOn)
                         {
@@ -317,9 +321,20 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                                 var url = a.BackendPath;
                                 url = "http://" + upstreamName;
 
-                                WriteProxyPassLocation(2, a.ReverseProxyLocation, url, sb, $"\"{a.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{a.ServiceVersion}\"", upstreamName,a.CacheOptions);
+                                WriteProxyPassLocation(2, a.ReverseProxyLocation, url, sb,
+                                    $"\"{a.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{a.ServiceVersion}\"", upstreamName,a.CacheOptions);
                             }
                         }
+
+                        {
+                            var upstreamName = this.Context.ServiceName.AbsoluteUri.Split('/').Last().Replace('.', '_');
+
+                            WriteProxyPassLocation(2,
+                                "/.well-known/acme-challenge", "http://" + upstreamName, sb,
+                                $"\"{ this.Context.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{ this.Context.CodePackageActivationContext.GetServiceManifestVersion()}\"",
+                                upstreamName, null
+                                );
+                            }
 
 
                     }
@@ -535,10 +550,29 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         public async Task<CertGenerationState> GetCertGenerationStateAsync(string hostname, SslOptions options, bool force, CancellationToken token)
         {
+
+            var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
+            var actorServiceUri = new Uri($"{applicationName}/GatewayServiceManagerActorService");
+
+            if (options.UseHttp01Challenge)
+            {
+                var actorService = ActorServiceProxy.Create<IGatewayServiceManagerActorService>(actorServiceUri, new ActorId(hostname));
+
+                var state = await actorService.GetCertGenerationInfoAsync(hostname, options, token);
+                if (state != null && state.RunAt.HasValue && state.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14)))
+                {
+                    return state;
+                }
+
+                await ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId(hostname)).RequestCertificateAsync(hostname, options); 
+                 
+
+
+            }
+
             if (!force)
             {
-                var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
-                var actorServiceUri = new Uri($"{applicationName}/GatewayServiceManagerActorService");
+              
                 List<long> partitions = await GetPartitionsAsync(actorServiceUri);
 
                 var serviceProxyFactory = new ServiceProxyFactory();

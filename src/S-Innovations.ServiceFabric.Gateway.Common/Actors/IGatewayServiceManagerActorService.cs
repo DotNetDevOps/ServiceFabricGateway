@@ -17,5 +17,6 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Actors
 
         Task<List<GatewayServiceRegistrationData>> GetGatewayServicesAsync(CancellationToken cancellationToken);
         Task DeleteGatewayServiceAsync(string key, CancellationToken cancellationToken);
+        Task<CertGenerationState[]> GetCerts(CancellationToken requestAborted);
     }
 }
