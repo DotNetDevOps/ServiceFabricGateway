@@ -3,7 +3,7 @@ using System.Threading;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Practices.Unity;
+using Unity;
 using Serilog;
 using SInnovations.LetsEncrypt;
 using SInnovations.ServiceFabric.GatewayService.Actors;

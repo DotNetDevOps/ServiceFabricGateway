@@ -1,4 +1,4 @@
-﻿using Microsoft.Practices.Unity;
+﻿using Unity;
 using SInnovations.ServiceFabric.Unity;
 using SInnovations.Unity.AspNetCore;
 using System;

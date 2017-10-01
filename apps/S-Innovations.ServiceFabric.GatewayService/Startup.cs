@@ -22,7 +22,7 @@ using Microsoft.Extensions.Primitives;
 using SInnovations.ServiceFabric.GatewayService.Services;
 using Newtonsoft.Json.Linq;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Practices.Unity;
+using Unity;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Channel;

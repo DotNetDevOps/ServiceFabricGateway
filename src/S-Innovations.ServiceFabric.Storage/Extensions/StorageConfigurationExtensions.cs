@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using Microsoft.Practices.Unity;
+using Unity;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using SInnovations.ServiceFabric.Storage.Configuration;
 using SInnovations.ServiceFabric.Storage.Services;
