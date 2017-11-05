@@ -330,7 +330,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                             var upstreamName = this.Context.ServiceName.AbsoluteUri.Split('/').Last().Replace('.', '_');
 
                             WriteProxyPassLocation(2,
-                                "/.well-known/acme-challenge", "http://" + upstreamName, sb,
+                                "/.well-known/acme-challenge/", "http://" + upstreamName, sb,
                                 $"\"{ this.Context.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{ this.Context.CodePackageActivationContext.GetServiceManifestVersion()}\"",
                                 upstreamName, null
                                 );
@@ -373,7 +373,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             {
                 // rewrite ^ /268be5f6-90b1-4aa1-9eac-2225d8f7ab29/131356467681395031/$1 break;
                 var uri = new Uri(url);
-                if (location.StartsWith("~"))
+                if (location.StartsWith("~") || location.Trim().StartsWith("/.well-known/"))
                 {
                    
 
@@ -428,7 +428,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 sb.AppendLine($"{tabs}proxy_http_version                      1.1;");
                 
 
-                if (location.Trim().StartsWith("~"))
+                if (location.Trim().StartsWith("~") || location.Trim().StartsWith("/.well-known/"))
                     sb.AppendLine($"{tabs}proxy_set_header X-Forwarded-PathBase   /;");
                 else
                 {
@@ -591,7 +591,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 }
             }
 
-            var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId(0));
+            var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("*"));
             await gateway.RequestCertificateAsync(hostname, options);
 
             return null;
@@ -599,11 +599,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         public async Task SetLastUpdatedAsync(DateTimeOffset time, CancellationToken token)
         {
       
-            var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId(0));
+            var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("*"));
             await gateway.SetLastUpdatedNow();
            
         }
-        public async Task<IDictionary<long, DateTimeOffset>> GetLastUpdatedAsync(CancellationToken token)
+        public async Task<IDictionary<ActorId, DateTimeOffset>> GetLastUpdatedAsync(CancellationToken token)
         {
 
             var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
@@ -612,7 +612,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
             var serviceProxyFactory = new ServiceProxyFactory();
 
-            var actors = new Dictionary<long, DateTimeOffset>();
+            var actors = new Dictionary<ActorId, DateTimeOffset>();
             foreach (var partition in partitions)
             {
                 var actorService = serviceProxyFactory.CreateServiceProxy<IGatewayServiceManagerActorService>(actorServiceUri, new ServicePartitionKey(partition));
@@ -635,7 +635,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 storageAccount = await Storage.GetApplicationStorageAccountAsync();
 
-                var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId(0));
+                var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("*"));
                 var a = await _fabricClient.ServiceManager.GetServiceDescriptionAsync(this.Context.ServiceName) as StatelessServiceDescription;
 
                 await gateway.SetupStorageServiceAsync(a.InstanceCount);
@@ -656,10 +656,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         LaunchNginxProcess($"-c \"{Path.GetFullPath("nginx.conf")}\"");
 
                     var allActorsUpdated = await GetLastUpdatedAsync(cancellationToken);
-                    if (allActorsUpdated.ContainsKey(gateway.GetActorId().GetLongId()))
+                 //   if (allActorsUpdated.ContainsKey(gateway.GetActorId()))
                     {
-                        var updated = allActorsUpdated[gateway.GetActorId().GetLongId()];  // await gateway.GetLastUpdatedAsync();
-
+                        //     var updated = allActorsUpdated[gateway.GetActorId()];  // await gateway.GetLastUpdatedAsync();
+                        var updated = allActorsUpdated.Values.OrderByDescending(k => k).First();
                         if (!lastWritten.Equals(updated))
                         {
                             lastWritten = updated;

@@ -89,10 +89,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             return all;
         }
 
-        public async Task<IDictionary<long, DateTimeOffset>> GetLastUpdatedAsync(CancellationToken cancellationToken)
+        public async Task<IDictionary<ActorId, DateTimeOffset>> GetLastUpdatedAsync(CancellationToken cancellationToken)
         {
             ContinuationToken continuationToken = null;
-            var actors = new Dictionary<long, DateTimeOffset>();
+            var actors = new Dictionary<ActorId, DateTimeOffset>();
 
             do
             {
@@ -104,7 +104,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     if (await this.StateProvider.ContainsStateAsync(actor, GatewayServiceManagerActor.STATE_LAST_UPDATED_NAME, cancellationToken))
                     {
                         var count = await this.StateProvider.LoadStateAsync<DateTimeOffset>(actor, GatewayServiceManagerActor.STATE_LAST_UPDATED_NAME, cancellationToken);
-                        actors.Add(actor.GetLongId(), count);
+                        actors.Add(actor, count);
                     }
                 }
 
@@ -113,6 +113,25 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             while (continuationToken != null);
 
             return actors;
+        }
+
+        public async Task<string> GetChallengeResponseAsync(ActorId actorId, CancellationToken requestAborted)
+        {
+            if( await this.StateProvider.ContainsStateAsync(actorId,"cert_" + actorId.GetStringId(),requestAborted))
+            {
+                var cert = await this.StateProvider.LoadStateAsync<CertGenerationState>(actorId, "cert_" + actorId.GetStringId(), requestAborted);
+                while(cert.HttpChallengeInfo == null)
+                {
+                    await Task.Delay(2000);
+                    cert = await this.StateProvider.LoadStateAsync<CertGenerationState>(actorId, "cert_" + actorId.GetStringId(), requestAborted);
+
+                }
+
+                return cert.HttpChallengeInfo.KeyAuthString;
+            }
+
+
+            throw new KeyNotFoundException();
         }
 
         public async Task<CertGenerationState[]> GetCerts(CancellationToken cancellationToken)

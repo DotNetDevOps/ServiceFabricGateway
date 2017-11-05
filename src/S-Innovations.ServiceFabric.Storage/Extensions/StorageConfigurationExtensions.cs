@@ -1,22 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Fabric;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.DataProtection;
+﻿using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using Unity;
-using Microsoft.ServiceFabric.Services.Remoting.Client;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Auth;
 using SInnovations.ServiceFabric.Storage.Configuration;
 using SInnovations.ServiceFabric.Storage.Services;
 using SInnovations.ServiceFabric.Unity;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Fabric;
 using System.Security.Cryptography.X509Certificates;
-using Microsoft.WindowsAzure.Storage.Auth;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Unity;
+using Unity.Injection;
+using Unity.Lifetime;
 
 namespace SInnovations.ServiceFabric.Storage.Extensions
 {

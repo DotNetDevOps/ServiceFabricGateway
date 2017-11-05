@@ -11,6 +11,8 @@ using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services;
 using SInnovations.ServiceFabric.Unity;
 using SInnovations.Unity.AspNetCore;
 using System;
+using Unity.Injection;
+using Unity.Lifetime;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions
 {

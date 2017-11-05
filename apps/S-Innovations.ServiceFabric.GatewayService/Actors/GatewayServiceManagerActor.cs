@@ -133,32 +133,45 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                 {
                     if (certInfo.HttpChallengeInfo == null)
                     {
-                        using (var client = new AcmeClient(WellKnownServers.LetsEncrypt))
+                        try
                         {
-                            // Create new registration
-                            var account = await client.NewRegistraton("mailto:"+certInfo.SslOptions.SignerEmail);
-                        
-                            // Initialize authorization
-                            var authz = await client.NewAuthorization(new AuthorizationIdentifier
+                            using (var client = new AcmeClient(WellKnownServers.LetsEncrypt))
                             {
-                                Type = AuthorizationIdentifierTypes.Dns,
-                                Value = hostname
-                            });
-                            var httpChallengeInfo = authz.Data.Challenges.First(c => c.Type == ChallengeTypes.Http01);
+                                // Create new registration
+                                var account = await client.NewRegistraton("mailto:" + certInfo.SslOptions.SignerEmail);
 
-                            certInfo.HttpChallengeInfo = new CertHttpChallengeInfo
-                            {
-                                Token = httpChallengeInfo.Token,
-                                KeyAuthString = client.ComputeKeyAuthorization(httpChallengeInfo),
-                                Location = (await client.CompleteChallenge(httpChallengeInfo)).Location.AbsoluteUri,
-                            };
-                           
+                                // Accept terms of services
+                                account.Data.Agreement = account.GetTermsOfServiceUri();
+                                account = await client.UpdateRegistration(account);
 
-                            store.Enqueue(hostname);
+                                // Initialize authorization
+                                var authz = await client.NewAuthorization(new AuthorizationIdentifier
+                                {
+                                    Type = AuthorizationIdentifierTypes.Dns,
+                                    Value = hostname
+                                });
+                                var httpChallengeInfo = authz.Data.Challenges.First(c => c.Type == ChallengeTypes.Http01);
 
+                                certInfo.HttpChallengeInfo = new CertHttpChallengeInfo
+                                {
+                                    Token = httpChallengeInfo.Token,
+                                    KeyAuthString = client.ComputeKeyAuthorization(httpChallengeInfo),
+                                    
+                                };
+
+                                await StateManager.SetStateAsync($"cert_{hostname}", certInfo);
+
+                                certInfo.HttpChallengeInfo.Location = (await client.CompleteChallenge(httpChallengeInfo)).Location.AbsoluteUri;
+
+                                store.Enqueue(hostname);
+
+
+
+
+                            }
+                        }catch(Exception ex)
+                        {
                             
-
-
                         }
                     }
                     else
@@ -224,6 +237,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                                     {
                                         certInfo.Completed = true;
                                     }
+                                }
+                                else
+                                {
+
                                 }
                             }
                             else

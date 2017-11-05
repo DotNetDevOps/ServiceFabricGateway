@@ -31,6 +31,8 @@ using System.Net;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Lifetime;
+using Unity.Injection;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 {
@@ -264,7 +266,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
         {
             try
             {
-                var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId(0), "S-Innovations.ServiceFabric.GatewayApplication", "GatewayServiceManagerActorService");
+                var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("*"), "S-Innovations.ServiceFabric.GatewayApplication", "GatewayServiceManagerActorService");
 
 
                 if (!this.GetAddresses().TryGetValue("kestrel", out string backAddress))

@@ -30,6 +30,9 @@ using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using SInnovations.ServiceFabric.Gateway.Common.Actors;
 using SInnovations.ServiceFabric.Gateway.Common.Model;
+using Microsoft.ServiceFabric.Actors.Client;
+using SInnovations.ServiceFabric.Gateway.Actors;
+using Microsoft.ServiceFabric.Actors;
 
 namespace SInnovations.ServiceFabric.GatewayService
 {
@@ -219,9 +222,10 @@ namespace SInnovations.ServiceFabric.GatewayService
 
             //var telemetryConfiguration = app.ApplicationServices.GetService<TelemetryConfiguration>();
             //var builder = telemetryConfiguration.TelemetryProcessorChainBuilder;
-           
+
             //builder.Use((next) => new CustomTelemetryProcessor(next));
             //builder.Build();
+
 
             app.UseRouter(router =>
             {
@@ -246,37 +250,44 @@ namespace SInnovations.ServiceFabric.GatewayService
                     context.Response.StatusCode = 204;
                 });
 
-                router.MapGet(".well-known/acme-challenge", async (request,response,route)=>
+                router.MapGet(".well-known/acme-challenge/{token}", async (request,response,route)=>
                 {
-                    var path = request.Path.ToUriComponent();
-                    if (path?.Length > 1 && path.StartsWith("/"))
+                    
                     {
-                        var _fabricClient = new FabricClient();
+                        //var _fabricClient = new FabricClient();
                         var applicationName = request.HttpContext.RequestServices.GetService<ICodePackageActivationContext>().ApplicationName;
                         var actorServiceUri = new Uri($"{applicationName}/GatewayServiceManagerActorService");
-                        var partitions = new List<long>();
-                        var servicePartitionList = await _fabricClient.QueryManager.GetPartitionListAsync(actorServiceUri);
-                        foreach (var servicePartition in servicePartitionList)
-                        {
-                            var partitionInformation = servicePartition.PartitionInformation as Int64RangePartitionInformation;
-                            partitions.Add(partitionInformation.LowKey);
-                        }
+                        var actorservice = ActorServiceProxy.Create<IGatewayServiceManagerActorService>(actorServiceUri, new ActorId(request.Host.Host));
 
-                        var serviceProxyFactory = new ServiceProxyFactory();
-
-                        var actors = new Dictionary<long, DateTimeOffset>();
-                        foreach (var partition in partitions)
-                        {
-                            var actorService = serviceProxyFactory.CreateServiceProxy<IGatewayServiceManagerActorService>(actorServiceUri, new ServicePartitionKey(partition));
-
-                            CertGenerationState[] certs = await actorService.GetCerts(request.HttpContext.RequestAborted);
-                            
-                        }
-
-
+                        var thumbprint = await actorservice.GetChallengeResponseAsync(new ActorId(request.Host.Host),request.HttpContext.RequestAborted);
 
                         response.ContentType = "plain/text";
-                        await response.WriteAsync($"{path.Substring(1)}.<thumbprint>");
+                        await response.WriteAsync($"{route.Values["token"]}.{thumbprint}");
+
+                        // var actor = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("local.earthml.com"))
+                        //var partitions = new List<long>();
+                        //var servicePartitionList = await _fabricClient.QueryManager.GetPartitionListAsync(actorServiceUri);
+                        //foreach (var servicePartition in servicePartitionList)
+                        //{
+                        //    var partitionInformation = servicePartition.PartitionInformation as Int64RangePartitionInformation;
+                        //    partitions.Add(partitionInformation.LowKey);
+                        //}
+
+                        //var serviceProxyFactory = new ServiceProxyFactory();
+
+                        //var actors = new Dictionary<long, DateTimeOffset>();
+                        //foreach (var partition in partitions)
+                        //{
+                        //    var actorService = serviceProxyFactory.CreateServiceProxy<IGatewayServiceManagerActorService>(actorServiceUri, new ServicePartitionKey(partition));
+
+                        //    CertGenerationState[] certs = await actorService.GetCerts(request.HttpContext.RequestAborted);
+
+
+                        //}
+
+
+
+
                     }
                 });
             });
