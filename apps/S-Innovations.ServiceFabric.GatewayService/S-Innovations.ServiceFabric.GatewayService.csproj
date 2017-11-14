@@ -30,6 +30,12 @@
 
   <ItemGroup>
     <PackageReference Include="Certes" Version="1.1.2" />
+    <PackageReference Include="Microsoft.ServiceFabric">
+      <Version>6.1.219-preview</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.ServiceFabric.Services.Remoting">
+      <Version>3.0.219-preview</Version>
+    </PackageReference>
     <PackageReference Include="S-Innovations.LetsEncrypt.DnsMadeEasyChallenger" Version="1.0.0-pre-2017071204" />
     <PackageReference Include="Microsoft.Extensions.Configuration.AzureKeyVault" Version="2.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Routing" Version="2.0.0" />
