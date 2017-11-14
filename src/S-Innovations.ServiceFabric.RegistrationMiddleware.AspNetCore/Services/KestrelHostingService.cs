@@ -183,7 +183,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                             {
                                 services.AddSingleton(listener);
                                 services.AddSingleton((sp)=> new KestrelHostingAddresss{Url = this.GetAddresses()["kestrel"]  });
-                                services.AddSingleton<ITelemetryInitializer>((serviceProvider) => FabricTelemetryInitializerExtension.CreateFabricTelemetryInitializer(serviceContext));
+
+                            //    services.AddSingleton<ITelemetryInitializer>((serviceProvider) => FabricTelemetryInitializerExtension.CreateFabricTelemetryInitializer(serviceContext));
                                 
                             });
 
@@ -283,6 +284,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
                 await base.OnOpenAsync(cancellationToken);
 
+               
+
                 await RegisterGatewayServiceAsync(gateway, backAddress, Options.GatewayOptions);
 
                 foreach (var gw in Options.AdditionalGateways)
@@ -305,18 +308,21 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
         private async Task RegisterGatewayServiceAsync(IGatewayServiceManagerActor gateway, string backAddress, GatewayOptions gw)
         {
-            await gateway.RegisterGatewayServiceAsync(new GatewayServiceRegistrationData
-            {
-                Key = $"{gw.Key ?? Context.CodePackageActivationContext.GetServiceManifestName()}-{Context.NodeContext.IPAddressOrFQDN}",
-                IPAddressOrFQDN = Context.NodeContext.IPAddressOrFQDN,
-                ServerName = gw.ServerName,
-                ReverseProxyLocation = gw.ReverseProxyLocation ?? "/",
-                Ssl = gw.Ssl,
-                BackendPath = backAddress,
-                ServiceName = Context.ServiceName,
-                ServiceVersion = Context.CodePackageActivationContext.GetServiceManifestVersion(),
-                CacheOptions = gw.CacheOptions
-            });
+           
+             
+                await gateway.RegisterGatewayServiceAsync(new GatewayServiceRegistrationData
+                {
+                    Key = $"{gw.Key ?? Context.CodePackageActivationContext.GetServiceManifestName()}-{Context.NodeContext.IPAddressOrFQDN}",
+                    IPAddressOrFQDN = Context.NodeContext.IPAddressOrFQDN,
+                    ServerName = gw.ServerName,
+                    ReverseProxyLocation = gw.ReverseProxyLocation ?? "/",
+                    Ssl = gw.Ssl,
+                    BackendPath = backAddress,
+                    ServiceName = Context.ServiceName,
+                    ServiceVersion = Context.CodePackageActivationContext.GetServiceManifestVersion(),
+                    CacheOptions = gw.CacheOptions
+                });
+            
         }
     }
     /// <summary>

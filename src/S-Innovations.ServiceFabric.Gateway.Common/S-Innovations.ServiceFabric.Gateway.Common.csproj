@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyTitle>Common Library for S-Innoations Service Fabric Gateway</AssemblyTitle>
     <VersionPrefix>1.0.1</VersionPrefix>
-    <TargetFrameworks>net462</TargetFrameworks>
+    <TargetFrameworks>net462;netstandard2.0</TargetFrameworks>
     <AssemblyName>S-Innovations.ServiceFabric.Gateway.Common</AssemblyName>
     <PackageId>S-Innovations.ServiceFabric.Gateway.Common</PackageId>
     <PackageTags>S-Innovations ServiceFabric Gateway</PackageTags>
@@ -18,8 +18,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.ServiceFabric.Services" Version="2.8.211" />
-    <PackageReference Include="Microsoft.ServiceFabric.Actors" Version="2.8.211" />
+    <PackageReference Include="Microsoft.ServiceFabric.Services" Version="3.0.219-preview" />
+    <PackageReference Include="Microsoft.ServiceFabric.Actors" Version="3.0.219-preview" />
    
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net462' ">

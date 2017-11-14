@@ -1,6 +1,8 @@
 ﻿using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting;
+using Microsoft.ServiceFabric.Services.Remoting.FabricTransport;
 using Microsoft.ServiceFabric.Services.Remoting.Runtime;
+using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Runtime;
 using Microsoft.ServiceFabric.Services.Runtime;
 using Microsoft.WindowsAzure.Storage;
 using SInnovations.ServiceFabric.Storage.Configuration;
@@ -8,6 +10,9 @@ using System;
 using System.Collections.Generic;
 using System.Fabric;
 using System.Threading.Tasks;
+
+
+//[assembly: FabricTransportServiceRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
 
 namespace SInnovations.ServiceFabric.Storage.Services
 {
@@ -32,8 +37,18 @@ namespace SInnovations.ServiceFabric.Storage.Services
 
         protected override IEnumerable<ServiceInstanceListener> CreateServiceInstanceListeners()
         {
-           // return new[] { new ServiceInstanceListener(Factory) };
-            return new[] { new ServiceInstanceListener(context => this.CreateServiceRemotingListener(context),"RPC") };
+            return this.CreateServiceRemotingInstanceListeners();
+            // return new[] { new ServiceInstanceListener(Factory) };
+            //  return new[] { new ServiceInstanceListener(context => this.CreateServiceRemotingListener(context),"RPC") };
+
+            //return new[]
+            //{
+            //     new ServiceInstanceListener((c) =>
+            //     {
+            //         return new FabricTransportServiceRemotingListener(c, this);
+
+            //     },"RPC")
+            // };
         }
 
         //private ICommunicationListener Factory(StatelessServiceContext arg)

@@ -31,10 +31,11 @@ namespace SInnovations.ServiceFabric.Storage.Configuration
             try
             {
                 valuePtr = Marshal.SecureStringToGlobalAllocUnicode(value);
-                var secureStringPassword = new SecureString();
+             //   var secureStringPassword = new SecureString();
 
                 var chars = new char[1];
                 var clientId = new StringBuilder();
+                var secret = new StringBuilder();
                 var clientIdDone = false;
                 for (int i = 0; i < value.Length; i++)
                 {
@@ -55,13 +56,13 @@ namespace SInnovations.ServiceFabric.Storage.Configuration
                     }
                     else if (c != '\0')
                     {
-                        secureStringPassword.AppendChar(c);
-
+                       // secureStringPassword.AppendChar(c);
+                        secret.Append(c);
                     }
 
                     // handle unicodeChar
                 }
-                return new ClientCredential(clientId.ToString(), new SecureClientSecret(secureStringPassword));
+                return new ClientCredential(clientId.ToString(), secret.ToString());// new SecureClientSecret(secureStringPassword));
 
             }
             finally

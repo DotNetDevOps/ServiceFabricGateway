@@ -55,7 +55,7 @@ namespace SInnovations.ServiceFabric.Storage.Extensions
                     var name = storage.GetApplicationStorageAccountNameAsync().GetAwaiter().GetResult();
                     var a = new CloudStorageAccount(new StorageCredentials(token), name, null, true);
                     var c = a.CreateCloudBlobClient().GetContainerReference("dataprotection");
-                    c.CreateIfNotExists();
+                    c.CreateIfNotExistsAsync().Wait();
 
                     services.AddDataProtection()
                      .ProtectKeysWithCertificate(cert)

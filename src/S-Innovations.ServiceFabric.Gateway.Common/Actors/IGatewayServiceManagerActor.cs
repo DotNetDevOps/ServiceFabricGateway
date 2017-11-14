@@ -4,7 +4,11 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Microsoft.ServiceFabric.Actors;
+using Microsoft.ServiceFabric.Actors.Remoting.FabricTransport;
+using Microsoft.ServiceFabric.Services.Remoting;
 using SInnovations.ServiceFabric.Gateway.Model;
+
+//[assembly: FabricTransportActorRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
 
 namespace SInnovations.ServiceFabric.Gateway.Actors
 {

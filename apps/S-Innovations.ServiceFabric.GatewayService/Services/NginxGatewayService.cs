@@ -23,6 +23,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
@@ -95,11 +96,26 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 {
                     Key = "NGINX-MANAGER",
                     ReverseProxyLocation = "/manage/",
-                    ServerName = "www.earthml.com local.earthml.com",
+                    ServerName = "www.earthml.com",
                     Ssl = new SslOptions
                     {
                         Enabled = true,
                         SignerEmail = "info@earthml.com"
+                    },
+                },
+                AdditionalGateways = new GatewayOptions[]
+                {
+                    new GatewayOptions
+                    {
+                       Key ="NGINX-MANAGER-LOCAL",
+                       ReverseProxyLocation = "/manage/",
+                       ServerName = "local.earthml.com",
+                       Ssl = new SslOptions
+                       {
+                            Enabled = true,
+                            SignerEmail = "info@earthml.com",
+                            UseHttp01Challenge = true
+                       },
                     }
                 }
 
@@ -140,7 +156,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             sb.AppendLine("events {\n\tworker_connections  1024;\n}");
             sb.AppendLine("http {");
 
-           
+
             sb.AppendLine();
 
             sb.AppendLine("\tclient_max_body_size 100m;");
@@ -200,7 +216,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             sb.AppendLine("\tproxy_buffer_size          128k;");
             sb.AppendLine("\tproxy_buffers              4 256k;");
             sb.AppendLine("\tproxy_busy_buffers_size    256k;");
-          
+
 
 
             {
@@ -213,11 +229,12 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 {
                     var hashset = new HashSet<string>();
 
-                    var uniques = upstreams.Where(upstream => {
+                    var uniques = upstreams.Where(upstream =>
+                    {
                         var added = hashset.Contains(new Uri(upstream.BackendPath).Authority);
                         if (!added) { hashset.Add(new Uri(upstream.BackendPath).Authority); }
                         return !added;
-                        }).ToArray();
+                    }).ToArray();
 
                     var upstreamName = upstreams.Key.AbsoluteUri.Split('/').Last().Replace('.', '_');
                     //$upstream_addr
@@ -234,16 +251,17 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     {
                         if (Directory.Exists(Path.Combine(codePath, $"cache/{upstreamName}")))
                         {
-                            Directory.Delete(Path.Combine(codePath, $"cache/{upstreamName}"),true);
+                            Directory.Delete(Path.Combine(codePath, $"cache/{upstreamName}"), true);
                         }
-                    }catch(Exception ex)
+                    }
+                    catch (Exception ex)
                     {
 
                     }
 
                     sb.AppendLine($"\tproxy_cache_path  cache/{upstreamName}  levels=1:2    keys_zone={upstreamName}:10m inactive=24h  max_size=1g;");
 
-                 
+
                 }
 
                 foreach (var serverGroup in proxies.GroupByServerName())
@@ -257,7 +275,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         sslOn = state != null && state.Completed;
                     }
 
-                    
+
 
                     sb.AppendLine("\tserver {");
                     {
@@ -316,13 +334,13 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         {
                             if (a.IPAddressOrFQDN == Context.NodeContext.IPAddressOrFQDN)
                             {
-                                var upstreamName = a.ServiceName.AbsoluteUri.Split('/').Last().Replace('.','_');
+                                var upstreamName = a.ServiceName.AbsoluteUri.Split('/').Last().Replace('.', '_');
 
                                 var url = a.BackendPath;
                                 url = "http://" + upstreamName;
 
                                 WriteProxyPassLocation(2, a.ReverseProxyLocation, url, sb,
-                                    $"\"{a.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{a.ServiceVersion}\"", upstreamName,a.CacheOptions);
+                                    $"\"{a.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{a.ServiceVersion}\"", upstreamName, a.CacheOptions);
                             }
                         }
 
@@ -334,7 +352,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                                 $"\"{ this.Context.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{ this.Context.CodePackageActivationContext.GetServiceManifestVersion()}\"",
                                 upstreamName, null
                                 );
-                            }
+                        }
 
 
                     }
@@ -365,7 +383,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         }
 
-        private static void WriteProxyPassLocation(int level, string location, string url, StringBuilder sb,string uniquekey, string upstreamName, ProxyPassCacheOptions cacheOptions)
+        private static void WriteProxyPassLocation(int level, string location, string url, StringBuilder sb, string uniquekey, string upstreamName, ProxyPassCacheOptions cacheOptions)
         {
 
             var tabs = string.Join("", Enumerable.Range(0, level + 1).Select(r => "\t"));
@@ -375,7 +393,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 var uri = new Uri(url);
                 if (location.StartsWith("~") || location.Trim().StartsWith("/.well-known/"))
                 {
-                   
+
 
                     if (!string.IsNullOrEmpty(uri.AbsolutePath?.TrimEnd('/')))
                     {
@@ -386,10 +404,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 }
                 else
                 {
-                   
+
                     sb.AppendLine($"{tabs}proxy_pass {url.TrimEnd('/')}/;");
 
-                  
+
 
                 }
 
@@ -426,19 +444,19 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 sb.AppendLine($"{tabs}proxy_connect_timeout                   3s;");
                 sb.AppendLine($"{tabs}proxy_http_version                      1.1;");
-                
+
 
                 if (location.Trim().StartsWith("~") || location.Trim().StartsWith("/.well-known/"))
                     sb.AppendLine($"{tabs}proxy_set_header X-Forwarded-PathBase   /;");
                 else
                 {
                     sb.AppendLine($"{tabs}proxy_set_header X-Forwarded-PathBase   {location};");
-           
+
                 }
 
                 sb.AppendLine($"{tabs}proxy_cache_bypass $http_upgrade;");
                 sb.AppendLine($"{tabs}proxy_cache_bypass $http_pragma;");
-                
+
             }
             sb.AppendLine($"{string.Join("", Enumerable.Range(0, level).Select(r => "\t"))}}}");
 
@@ -450,7 +468,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         private void LaunchNginxProcess(string arguments)
         {
-            var codePackage = this.Context.CodePackageActivationContext.CodePackageName;           
+            var codePackage = this.Context.CodePackageActivationContext.CodePackageName;
             var codePath = this.Context.CodePackageActivationContext.GetCodePackageObject(codePackage).Path;
             var res = File.Exists(Path.Combine(codePath, nginxVersion));
             var nginxStartInfo = new ProcessStartInfo(Path.Combine(codePath, nginxVersion))
@@ -505,13 +523,13 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
             var actorServiceUri = new Uri($"{applicationName}/GatewayServiceManagerActorService");
             List<long> partitions = await GetPartitionsAsync(actorServiceUri);
-            var serviceProxyFactory = new ServiceProxyFactory();
+            var serviceProxyFactory = new ServiceProxyFactory(c => new FabricTransportServiceRemotingClientFactory());
 
-          
+
             foreach (var partition in partitions)
             {
                 var actorService = serviceProxyFactory.CreateServiceProxy<IGatewayServiceManagerActorService>(actorServiceUri, new ServicePartitionKey(partition));
-                await actorService.DeleteGatewayServiceAsync(v,cancellationToken);
+                await actorService.DeleteGatewayServiceAsync(v, cancellationToken);
             }
 
         }
@@ -521,7 +539,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             var actorServiceUri = new Uri($"{applicationName}/GatewayServiceManagerActorService");
             List<long> partitions = await GetPartitionsAsync(actorServiceUri);
 
-            var serviceProxyFactory = new ServiceProxyFactory();
+            var serviceProxyFactory = new ServiceProxyFactory(c => new FabricTransportServiceRemotingClientFactory());
 
             var all = new List<GatewayServiceRegistrationData>();
             foreach (var partition in partitions)
@@ -534,7 +552,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             }
             return all;
         }
-         
+
         private async Task<List<long>> GetPartitionsAsync(Uri actorServiceUri)
         {
             var partitions = new List<long>();
@@ -564,18 +582,18 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     return state;
                 }
 
-                await ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId(hostname)).RequestCertificateAsync(hostname, options); 
-                 
+                await ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId(hostname)).RequestCertificateAsync(hostname, options);
+
 
 
             }
 
             if (!force)
             {
-              
+
                 List<long> partitions = await GetPartitionsAsync(actorServiceUri);
 
-                var serviceProxyFactory = new ServiceProxyFactory();
+                var serviceProxyFactory = new ServiceProxyFactory(c => new FabricTransportServiceRemotingClientFactory());
 
                 var actors = new Dictionary<long, DateTimeOffset>();
                 foreach (var partition in partitions)
@@ -598,10 +616,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         }
         public async Task SetLastUpdatedAsync(DateTimeOffset time, CancellationToken token)
         {
-      
+
             var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("*"));
             await gateway.SetLastUpdatedNow();
-           
+
         }
         public async Task<IDictionary<ActorId, DateTimeOffset>> GetLastUpdatedAsync(CancellationToken token)
         {
@@ -610,7 +628,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             var actorServiceUri = new Uri($"{applicationName}/GatewayServiceManagerActorService");
             List<long> partitions = await GetPartitionsAsync(actorServiceUri);
 
-            var serviceProxyFactory = new ServiceProxyFactory();
+            var serviceProxyFactory = new ServiceProxyFactory(c => new FabricTransportServiceRemotingClientFactory());
 
             var actors = new Dictionary<ActorId, DateTimeOffset>();
             foreach (var partition in partitions)
@@ -656,7 +674,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         LaunchNginxProcess($"-c \"{Path.GetFullPath("nginx.conf")}\"");
 
                     var allActorsUpdated = await GetLastUpdatedAsync(cancellationToken);
-                 //   if (allActorsUpdated.ContainsKey(gateway.GetActorId()))
+                    //   if (allActorsUpdated.ContainsKey(gateway.GetActorId()))
                     {
                         //     var updated = allActorsUpdated[gateway.GetActorId()];  // await gateway.GetLastUpdatedAsync();
                         var updated = allActorsUpdated.Values.OrderByDescending(k => k).First();
@@ -682,7 +700,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
 
         }
-#endregion StatelessService
+        #endregion StatelessService
 
 
     }

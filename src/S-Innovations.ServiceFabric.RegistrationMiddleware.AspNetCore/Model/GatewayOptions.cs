@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model
 {
+   
     public class GatewayOptions
     {
         public string Key { get; set; }
@@ -14,5 +15,6 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model
         public string ServerName { get; set; }
         public SslOptions Ssl { get; set; } = new SslOptions();
         public ProxyPassCacheOptions CacheOptions { get; set; } = new ProxyPassCacheOptions();
+       
     }
 }

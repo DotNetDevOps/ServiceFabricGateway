@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net462</TargetFramework>
+    <TargetFrameworks>net462;netstandard2.0</TargetFrameworks>
     <AssemblyName>S-Innovations.ServiceFabric.Storage</AssemblyName>
     <PackageId>S-Innovations.ServiceFabric.Storage.AspNetCore2</PackageId>
   </PropertyGroup>
@@ -29,8 +29,7 @@
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="2.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.AzureStorage" Version="2.0.0" />
     <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="3.17.1" />
-    <PackageReference Include="Microsoft.ServiceFabric" Version="6.0.219" />
-    <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="1.0.0-pre-2017110501" />
+    <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="1.0.0-pre-2017111401" />
     <PackageReference Include="WindowsAzure.Storage" Version="8.5.0" />
   </ItemGroup>
   

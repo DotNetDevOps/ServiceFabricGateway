@@ -1,38 +1,30 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.ServiceFabric.Actors;
+using Microsoft.ServiceFabric.Actors.Client;
+using Microsoft.ServiceFabric.Actors.Remoting.FabricTransport;
+using Microsoft.ServiceFabric.Services.Client;
+using Microsoft.ServiceFabric.Services.Communication.Client;
+using Microsoft.ServiceFabric.Services.Remoting;
+using Microsoft.ServiceFabric.Services.Remoting.FabricTransport;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using SInnovations.ServiceFabric.Gateway.Common.Actors;
+using SInnovations.ServiceFabric.Gateway.Communication;
+using SInnovations.ServiceFabric.Gateway.Model;
+using SInnovations.ServiceFabric.GatewayService.Services;
+using System;
 using System.Collections.Generic;
 using System.Fabric;
 using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Microsoft.ServiceFabric.Services.Client;
-using Microsoft.ServiceFabric.Services.Communication.Client;
-using Newtonsoft.Json;
-using SInnovations.ServiceFabric.Gateway.Model;
-using SInnovations.ServiceFabric.Gateway.Communication;
-using SInnovations.ServiceFabric.GatewayService.Middlewares;
-using SInnovations.ServiceFabric.GatewayService.Actors;
-using Microsoft.Extensions.Primitives;
-using SInnovations.ServiceFabric.GatewayService.Services;
-using Newtonsoft.Json.Linq;
-using Microsoft.AspNetCore.Routing;
-using Unity;
-using Microsoft.AspNetCore.Http.Features;
-using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.ApplicationInsights.Channel;
-using Microsoft.ApplicationInsights.DataContracts;
-using Microsoft.ServiceFabric.Services.Remoting.Client;
-using SInnovations.ServiceFabric.Gateway.Common.Actors;
-using SInnovations.ServiceFabric.Gateway.Common.Model;
-using Microsoft.ServiceFabric.Actors.Client;
-using SInnovations.ServiceFabric.Gateway.Actors;
-using Microsoft.ServiceFabric.Actors;
+
+//[assembly: FabricTransportServiceRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
+//[assembly: FabricTransportActorRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
 
 namespace SInnovations.ServiceFabric.GatewayService
 {
@@ -262,7 +254,7 @@ namespace SInnovations.ServiceFabric.GatewayService
                         var thumbprint = await actorservice.GetChallengeResponseAsync(new ActorId(request.Host.Host),request.HttpContext.RequestAborted);
 
                         response.ContentType = "plain/text";
-                        await response.WriteAsync($"{route.Values["token"]}.{thumbprint}");
+                        await response.WriteAsync(thumbprint);
 
                         // var actor = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("local.earthml.com"))
                         //var partitions = new List<long>();

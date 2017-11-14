@@ -1,6 +1,8 @@
 ﻿using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Query;
 using Microsoft.ServiceFabric.Actors.Runtime;
+using Microsoft.ServiceFabric.Services.Communication.Runtime;
+using Microsoft.ServiceFabric.Services.Remoting.Runtime;
 using SInnovations.ServiceFabric.Gateway.Common.Actors;
 using SInnovations.ServiceFabric.Gateway.Common.Model;
 using SInnovations.ServiceFabric.Gateway.Model;
@@ -26,6 +28,12 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         {
 
         }
+        //protected override IEnumerable<ServiceReplicaListener> CreateServiceReplicaListeners()
+        //{
+        //    return this.CreateServiceRemotingReplicaListeners();
+        //}
+
+
         public async Task DeleteGatewayServiceAsync(string key, CancellationToken cancellationToken)
         {
             ContinuationToken continuationToken = null;
@@ -89,7 +97,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             return all;
         }
 
-        public async Task<IDictionary<ActorId, DateTimeOffset>> GetLastUpdatedAsync(CancellationToken cancellationToken)
+        public async Task<Dictionary<ActorId, DateTimeOffset>> GetLastUpdatedAsync(CancellationToken cancellationToken)
         {
             ContinuationToken continuationToken = null;
             var actors = new Dictionary<ActorId, DateTimeOffset>();

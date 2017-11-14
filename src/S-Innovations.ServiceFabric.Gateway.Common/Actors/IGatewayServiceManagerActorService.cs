@@ -1,5 +1,7 @@
 ﻿using Microsoft.ServiceFabric.Actors;
+using Microsoft.ServiceFabric.Actors.Remoting.FabricTransport;
 using Microsoft.ServiceFabric.Services.Remoting;
+using Microsoft.ServiceFabric.Services.Remoting.FabricTransport;
 using SInnovations.ServiceFabric.Gateway.Common.Model;
 using SInnovations.ServiceFabric.Gateway.Model;
 using System;
@@ -9,11 +11,14 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+//[assembly: FabricTransportServiceRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
+
+
 namespace SInnovations.ServiceFabric.Gateway.Common.Actors
 {
     public interface IGatewayServiceManagerActorService : IService
     {
-        Task<IDictionary<ActorId, DateTimeOffset>> GetLastUpdatedAsync(CancellationToken cancellationToken);
+        Task<Dictionary<ActorId, DateTimeOffset>> GetLastUpdatedAsync(CancellationToken cancellationToken);
         Task<CertGenerationState> GetCertGenerationInfoAsync(string hostname, SslOptions options, CancellationToken cancellationToken);
 
         Task<List<GatewayServiceRegistrationData>> GetGatewayServicesAsync(CancellationToken cancellationToken);

@@ -23,13 +23,15 @@ using System.IO;
 using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Pkcs;
+using Org.BouncyCastle.Asn1;
 
 namespace SInnovations.ServiceFabric.GatewayService.Actors
 {
 
 
 
-   
+
 
 
     /// <remarks>
@@ -69,15 +71,15 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
         public Task<List<GatewayServiceRegistrationData>> GetGatewayServicesAsync() => StateManager.GetStateAsync<List<GatewayServiceRegistrationData>>("proxyData");
 
-       
+
         public async Task RequestCertificateAsync(string hostname, SslOptions options)
         {
 
 
-            await StateManager.AddOrUpdateStateAsync($"cert_{hostname}", 
-                new CertGenerationState { HostName = hostname, SslOptions = options, RunAt=DateTimeOffset.UtcNow }, 
-                (key,old)=> new CertGenerationState { HostName = hostname, SslOptions = options, RunAt = DateTimeOffset.UtcNow, Completed = old.Completed });
-            
+            await StateManager.AddOrUpdateStateAsync($"cert_{hostname}",
+                new CertGenerationState { HostName = hostname, SslOptions = options, RunAt = DateTimeOffset.UtcNow },
+                (key, old) => new CertGenerationState { HostName = hostname, SslOptions = options, RunAt = DateTimeOffset.UtcNow, Completed = old.Completed });
+
             await AddHostnameToQueue(hostname);
 
             await RegisterReminderAsync(CREAT_SSL_REMINDERNAME, new byte[0],
@@ -108,7 +110,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
             }
         }
-
+        public static AcmeClient client = new AcmeClient(WellKnownServers.LetsEncrypt);
         public async Task ReceiveReminderAsync(string reminderName, byte[] context, TimeSpan dueTime, TimeSpan period)
         {
             if (reminderName.Equals(CREAT_SSL_REMINDERNAME))
@@ -129,178 +131,36 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
                 var certInfo = await StateManager.GetStateAsync<CertGenerationState>($"cert_{hostname}");
 
-                if (certInfo.SslOptions.UseHttp01Challenge)
+                if ((await Task.WhenAll(certBlob.ExistsAsync(), keyBlob.ExistsAsync(), fullchain.ExistsAsync())).Any(t => t == false) ||
+                        await CertExpiredAsync(certBlob))
                 {
-                    if (certInfo.HttpChallengeInfo == null)
+
+                    if (certInfo.SslOptions.UseHttp01Challenge)
                     {
-                        try
-                        {
-                            using (var client = new AcmeClient(WellKnownServers.LetsEncrypt))
-                            {
-                                // Create new registration
-                                var account = await client.NewRegistraton("mailto:" + certInfo.SslOptions.SignerEmail);
+                        await HandleHttpChallengeAsync(store, hostname, certBlob, fullchain, keyBlob, certInfo);
 
-                                // Accept terms of services
-                                account.Data.Agreement = account.GetTermsOfServiceUri();
-                                account = await client.UpdateRegistration(account);
-
-                                // Initialize authorization
-                                var authz = await client.NewAuthorization(new AuthorizationIdentifier
-                                {
-                                    Type = AuthorizationIdentifierTypes.Dns,
-                                    Value = hostname
-                                });
-                                var httpChallengeInfo = authz.Data.Challenges.First(c => c.Type == ChallengeTypes.Http01);
-
-                                certInfo.HttpChallengeInfo = new CertHttpChallengeInfo
-                                {
-                                    Token = httpChallengeInfo.Token,
-                                    KeyAuthString = client.ComputeKeyAuthorization(httpChallengeInfo),
-                                    
-                                };
-
-                                await StateManager.SetStateAsync($"cert_{hostname}", certInfo);
-
-                                certInfo.HttpChallengeInfo.Location = (await client.CompleteChallenge(httpChallengeInfo)).Location.AbsoluteUri;
-
-                                store.Enqueue(hostname);
-
-
-
-
-                            }
-                        }catch(Exception ex)
-                        {
-                            
-                        }
                     }
                     else
                     {
-                        using (var client = new AcmeClient(WellKnownServers.LetsEncrypt))
-                        {
-                            await Task.Delay(2000);
-                        
-                            var location = new Uri(certInfo.HttpChallengeInfo.Location);
-                            // Check authorization status (use the proper challenge to check Authorization State)
-                            var authz = await client.GetAuthorization(location); // or dnsChallenge.Location
-                            if (authz.Data.Status != EntityStatus.Pending)
-                            {
-
-                                if (authz.Data.Status == EntityStatus.Valid)
-                                {
-                                    try
-                                    {
-                                        // Create certificate
-                                        var csr = new CertificationRequestBuilder();
-                                        csr.AddName("CN", hostname);
-                                        var cert = await client.NewCertificate(csr);
-
-                                        // Export Pfx
-                                        var pfxBuilder = cert.ToPfx();
-                                        var pfx = pfxBuilder.Build(hostname, "abcd1234");
-
-                                        X509Certificate2 certificate = new X509Certificate2(pfx, "password", X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet);
-
-
-                                        RSACryptoServiceProvider rsa = (RSACryptoServiceProvider)certificate.PrivateKey;
-                                        MemoryStream memoryStream = new MemoryStream();
-                                        TextWriter streamWriter = new StreamWriter(memoryStream);
-                                        PemWriter pemWriter = new PemWriter(streamWriter);
-                                        AsymmetricCipherKeyPair keyPair = DotNetUtilities.GetRsaKeyPair(rsa);
-                                        pemWriter.WriteObject(keyPair.Private);
-                                        streamWriter.Flush();
-                                        string output = Encoding.ASCII.GetString(memoryStream.GetBuffer()).Trim();
-                                        int index_of_footer = output.IndexOf("-----END RSA PRIVATE KEY-----");
-                                        memoryStream.Close();
-                                        streamWriter.Close();
-                                        string PrivKey = output.Substring(0, index_of_footer + 29);
-
-                                        await keyBlob.UploadTextAsync(PrivKey);
-                                        var ms = new MemoryStream();
-                                        var mss = new StreamWriter(ms);
-                                        var chain = new PemWriter(mss);
-                                        chain.WriteObject(certificate);
-                                        mss.Flush();
-                                        ms.Flush();
-                                        var chiancert = ms.ToArray();
-                                        await certBlob.UploadFromByteArrayAsync(chiancert, 0, chiancert.Length);
-                                        //  File.WriteAllBytes("./my-free-cert.pfx", pfx);
-
-                                        // // Revoke certificate
-                                        //  await client.RevokeCertificate(cert);
-                                    }
-                                    catch(Exception ex)
-                                    {
-
-                                    }
-                                    finally
-                                    {
-                                        certInfo.Completed = true;
-                                    }
-                                }
-                                else
-                                {
-
-                                }
-                            }
-                            else
-                            {
-                                store.Enqueue(hostname);
-                            }
-                        }
+                        await HandleDnsChallengeAsync(certs, hostname, certBlob, fullchain, keyBlob, certInfo);
                     }
-
-
                 }
                 else
                 {
-
-
-                    if ((await Task.WhenAll(certBlob.ExistsAsync(), keyBlob.ExistsAsync(), fullchain.ExistsAsync())).Any(t => t == false) ||
-                        await CertExpiredAsync(certBlob))
-                    {
-                        try
-                        {
-
-                            var cert = await letsEncrypt.GenerateCertPairAsync(new GenerateCertificateRequestOptions
-                            {
-                                DnsIdentifier = certInfo.HostName,
-                                SignerEmail = certInfo.SslOptions.SignerEmail
-                            });
-
-                            await keyBlob.UploadFromByteArrayAsync(cert.Item1, 0, cert.Item1.Length);
-                            await certBlob.UploadFromByteArrayAsync(cert.Item2, 0, cert.Item2.Length);
-                            await fullchain.UploadFromByteArrayAsync(cert.Item3, 0, cert.Item3.Length);
-
-                            certInfo.Completed = true;
-                        }
-                        catch (Exception ex)
-                        {
-                            await certs.GetBlockBlobReference($"{hostname}.err").UploadTextAsync(ex.ToString());
-
-                        }
-
-
-
-
-                    }
-                    else
-                    {
-                        certInfo.Completed = true;
-                    }
+                    certInfo.Completed = true;
                 }
 
-                
+
                 await StateManager.SetStateAsync($"cert_{hostname}", certInfo);
 
-                 
+
                 var missing = store.ToList();
                 await StateManager.SetStateAsync(CERT_QUEUE_NAME, missing);
                 if (missing.Any())
                 {
                     await RegisterReminderAsync(
                       CREAT_SSL_REMINDERNAME, new byte[0],
-                      TimeSpan.FromMilliseconds( 10), TimeSpan.FromMilliseconds(-1));
+                      TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(-1));
                 }
 
                 await StateManager.SetStateAsync(STATE_LAST_UPDATED_NAME, DateTimeOffset.UtcNow);
@@ -308,11 +168,184 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
         }
 
+        private async Task HandleDnsChallengeAsync(CloudBlobContainer certs, string hostname, CloudBlockBlob certBlob, CloudBlockBlob fullchain, CloudBlockBlob keyBlob, CertGenerationState certInfo)
+        {
+            try
+            {
+
+                var cert = await letsEncrypt.GenerateCertPairAsync(new GenerateCertificateRequestOptions
+                {
+                    DnsIdentifier = certInfo.HostName,
+                    SignerEmail = certInfo.SslOptions.SignerEmail
+                });
+
+                await keyBlob.UploadFromByteArrayAsync(cert.Item1, 0, cert.Item1.Length);
+                await certBlob.UploadFromByteArrayAsync(cert.Item2, 0, cert.Item2.Length);
+                await fullchain.UploadFromByteArrayAsync(cert.Item3, 0, cert.Item3.Length);
+
+                certInfo.Completed = true;
+            }
+            catch (Exception ex)
+            {
+                await certs.GetBlockBlobReference($"{hostname}.err").UploadTextAsync(ex.ToString());
+
+            }
+        }
+
+        private async Task HandleHttpChallengeAsync(Queue<string> store, string hostname, CloudBlockBlob certBlob, CloudBlockBlob fullchain, CloudBlockBlob keyBlob, CertGenerationState certInfo)
+        {
+            if (certInfo.HttpChallengeInfo == null)
+            {
+                try
+                {
+                    //using (var client = new AcmeClient(WellKnownServers.LetsEncryptStaging))
+                    {
+                        // Create new registration
+                        var account = await client.NewRegistraton("mailto:" + certInfo.SslOptions.SignerEmail);
+
+                        // Accept terms of services
+                        account.Data.Agreement = account.GetTermsOfServiceUri();
+                        account = await client.UpdateRegistration(account);
+
+                        // Initialize authorization
+                        var authz = await client.NewAuthorization(new AuthorizationIdentifier
+                        {
+                            Type = AuthorizationIdentifierTypes.Dns,
+                            Value = hostname
+                        });
+                        var httpChallengeInfo = authz.Data.Challenges.First(c => c.Type == ChallengeTypes.Http01);
+
+                        certInfo.HttpChallengeInfo = new CertHttpChallengeInfo
+                        {
+                            Token = httpChallengeInfo.Token,
+                            KeyAuthString = client.ComputeKeyAuthorization(httpChallengeInfo),
+
+                        };
+
+                        await StateManager.SetStateAsync($"cert_{hostname}", certInfo);
+
+                        certInfo.HttpChallengeInfo.Location = (await client.CompleteChallenge(httpChallengeInfo)).Location.AbsoluteUri;
+
+                        store.Enqueue(hostname);
+
+
+
+
+                    }
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
+            else
+            {
+                // using (var client = new AcmeClient(WellKnownServers.LetsEncryptStaging))
+                {
+                    await Task.Delay(2000);
+
+                    var location = new Uri(certInfo.HttpChallengeInfo.Location);
+                    // Check authorization status (use the proper challenge to check Authorization State)
+                    var authz = await client.GetAuthorization(location); // or dnsChallenge.Location
+                    if (authz.Data.Status != EntityStatus.Pending)
+                    {
+
+                        if (authz.Data.Status == EntityStatus.Valid)
+                        {
+                            try
+                            {
+                                // Create certificate
+                                var csr = new CertificationRequestBuilder();
+                                csr.AddName("CN", hostname);
+                                var cert = await client.NewCertificate(csr);
+                                var keyInfo = cert.Key;
+
+                                var ms = new MemoryStream();
+                                keyInfo.Save(ms);
+
+                                //  cert.Issuer.Raw 
+
+                                //  var keyPair = cert.Key.CreateKeyPair();
+
+                                //   var pro = new AsymmetricKeyEntry()//
+                                // Export Pfx
+                                var pfxBuilder = cert.ToPfx();
+                                var pfx = pfxBuilder.Build(hostname, "abcd1234");
+
+                                X509Certificate2 certificate = new X509Certificate2(pfx, "abcd1234", X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet);
+                                String pem = "-----BEGIN CERTIFICATE-----\r\n" + Convert.ToBase64String(certificate.RawData, Base64FormattingOptions.InsertLineBreaks) + "\r\n-----END CERTIFICATE-----";
+
+                                //var c= certificate.GetRSAPrivateKey();
+                                // var test = certificate.PrivateKey;
+                                // RSACryptoServiceProvider rsa = (RSACryptoServiceProvider)test;
+                                // MemoryStream memoryStream = new MemoryStream();
+                                // TextWriter streamWriter = new StreamWriter(memoryStream);
+                                // PemWriter pemWriter = new PemWriter(streamWriter);
+                                // AsymmetricCipherKeyPair keyPair = DotNetUtilities.GetRsaKeyPair(rsa);
+                                // pemWriter.WriteObject(keyPair.Private);
+                                // streamWriter.Flush();
+                                // string output = Encoding.ASCII.GetString(memoryStream.GetBuffer()).Trim();
+                                // int index_of_footer = output.IndexOf("-----END RSA PRIVATE KEY-----");
+                                // memoryStream.Close();
+                                // streamWriter.Close();
+                                // string PrivKey = output.Substring(0, index_of_footer + 29);
+
+                                // await keyBlob.UploadTextAsync(PrivKey);
+                                // var ms = new MemoryStream();
+                                // var mss = new StreamWriter(ms);
+                                // var chain = new PemWriter(mss);
+                                // chain.WriteObject(certificate);
+                                // mss.Flush();
+                                // ms.Flush();
+                                var chiancert = ms.ToArray();
+                                await keyBlob.UploadFromByteArrayAsync(chiancert, 0, chiancert.Length);
+                                //  await fullchain.UploadFromByteArrayAsync(cert.Raw, 0, cert.Raw.Length);
+                                await fullchain.UploadTextAsync(pem);
+                                var cr = certificate.Export(X509ContentType.Cert);
+                                await certBlob.UploadFromByteArrayAsync(cr, 0, cr.Length);
+
+                                //  File.WriteAllBytes("./my-free-cert.pfx", pfx);
+
+                                // // Revoke certificate
+                                //  await client.RevokeCertificate(cert);
+                            }
+                            catch (Exception ex)
+                            {
+
+                            }
+                            finally
+                            {
+                                certInfo.Completed = true;
+                            }
+                        }
+                        else
+                        {
+
+                        }
+                    }
+                    else
+                    {
+                        store.Enqueue(hostname);
+                    }
+                }
+            }
+        }
+
         private async Task<bool> CertExpiredAsync(CloudBlockBlob certBlob)
         {
-            X509Certificate2 clientCertificate =
-                 new X509Certificate2(Encoding.UTF8.GetBytes( await certBlob.DownloadTextAsync()));
-            return clientCertificate.NotAfter.ToUniversalTime() < DateTime.UtcNow;
+            try
+            {
+
+                var bytes = new byte[certBlob.Properties.Length];
+                await certBlob.DownloadToByteArrayAsync(bytes, 0);
+
+                X509Certificate2 clientCertificate =
+                     new X509Certificate2(bytes);
+                return clientCertificate.NotAfter.ToUniversalTime() < DateTime.UtcNow;
+            }catch(Exception ex)
+            {
+                return true;
+            }
         }
 
         public async Task RegisterGatewayServiceAsync(GatewayServiceRegistrationData data)
