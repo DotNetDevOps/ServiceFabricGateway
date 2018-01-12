@@ -13,15 +13,13 @@ namespace SInnovations.ServiceFabric.CoreCLR.Tools.FabUtil
         [MTAThread]
         public static void Main(string[] args)
         {
-            Console.WriteLine("HELLO WORLD");
-           
+               
  
             var basePath = string.Join("/", AppContext.BaseDirectory.Split(new[] { '/', '\\' })
                 .TakeWhile(s => !s.Equals(".nuget", StringComparison.OrdinalIgnoreCase)));
             var actorPath = Path.Combine(basePath, @".nuget\packages\Microsoft.ServiceFabric.Actors");
             var versions = Directory.EnumerateDirectories(actorPath).Select(k => k.Substring(actorPath.Length + 1)).ToList();
-            Console.WriteLine(string.Join(",", versions));
-          //  versions.Add("2.7.198"); 
+          
            //TODO nuget versioning from current dependencies.
            var fileName = Path.Combine(basePath, $@".nuget\packages\Microsoft.ServiceFabric.Actors\{versions.Last()}\build\FabActUtil.exe");
             Console.WriteLine(fileName);
