@@ -13,6 +13,7 @@ using SInnovations.Unity.AspNetCore;
 using System;
 using Unity.Injection;
 using Unity.Lifetime;
+using Microsoft.Extensions.Options;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions
 {
@@ -43,7 +44,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
             container.ConfigureSerilogging((logConfiguration) =>
             {
 
-                logConfiguration.WriteTo.ApplicationInsightsTraces(container.Resolve<ApplicationInsights>().InstrumentationKey, Serilog.Events.LogEventLevel.Information);
+                logConfiguration.WriteTo.ApplicationInsightsTraces(container.Resolve<IOptions<ApplicationInsights>>().Value.InstrumentationKey, Serilog.Events.LogEventLevel.Information);
 
                
             });
