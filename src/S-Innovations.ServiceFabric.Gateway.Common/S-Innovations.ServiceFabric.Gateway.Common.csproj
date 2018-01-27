@@ -18,8 +18,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.ServiceFabric.Services" Version="3.0.232-preview" />
-    <PackageReference Include="Microsoft.ServiceFabric.Actors" Version="3.0.232-preview" />
+    <PackageReference Include="Microsoft.ServiceFabric.Actors" Version="3.0.456" />
+    <PackageReference Include="Microsoft.ServiceFabric.Services" Version="3.0.456" />
    
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net462' ">

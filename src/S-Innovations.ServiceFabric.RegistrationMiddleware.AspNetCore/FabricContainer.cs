@@ -15,11 +15,11 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore
         public FabricContainer()
         {
             this.RegisterInstance<IServiceScopeInitializer>(this);
-            this.AsFabricContainer();
+            this.AsFabricContainer().WithAspNetCoreServiceProvider();
         }
         public IUnityContainer InitializeScope(IUnityContainer container)
         {
-            return container.WithExtension();
+            return container.WithAspNetCoreServiceProvider();
         }
     }
 }
