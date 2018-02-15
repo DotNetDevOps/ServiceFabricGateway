@@ -25,6 +25,7 @@ using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Asn1;
+using System.Collections.Concurrent;
 
 namespace SInnovations.ServiceFabric.GatewayService.Actors
 {
@@ -110,7 +111,9 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
             }
         }
-        public static AcmeClient client = new AcmeClient(WellKnownServers.LetsEncrypt);
+        public static AcmeClient client = new AcmeClient(WellKnownServers.LetsEncryptStaging);
+        public static ConcurrentDictionary<string, Task<AcmeAccount>> _acmeaccounts = new ConcurrentDictionary<string, Task<AcmeAccount>>();
+
         public async Task ReceiveReminderAsync(string reminderName, byte[] context, TimeSpan dueTime, TimeSpan period)
         {
             if (reminderName.Equals(CREAT_SSL_REMINDERNAME))
@@ -192,6 +195,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
             }
         }
 
+
         private async Task HandleHttpChallengeAsync(Queue<string> store, string hostname, CloudBlockBlob certBlob, CloudBlockBlob fullchain, CloudBlockBlob keyBlob, CertGenerationState certInfo)
         {
             if (certInfo.HttpChallengeInfo == null)
@@ -200,13 +204,13 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                 {
                     //using (var client = new AcmeClient(WellKnownServers.LetsEncryptStaging))
                     {
-                        // Create new registration
-                        var account = await client.NewRegistraton("mailto:" + certInfo.SslOptions.SignerEmail);
 
-                        // Accept terms of services
-                        account.Data.Agreement = account.GetTermsOfServiceUri();
-                        account = await client.UpdateRegistration(account);
-
+                        var account = await _acmeaccounts.AddOrUpdate(certInfo.SslOptions.SignerEmail, AcmeAccountFactory, (email, old) =>
+                        {
+                            if (old.IsFaulted || old.IsCanceled)
+                                return AcmeAccountFactory(email);
+                            return old;
+                        });
                         // Initialize authorization
                         var authz = await client.NewAuthorization(new AuthorizationIdentifier
                         {
@@ -329,6 +333,20 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                     }
                 }
             }
+        }
+
+        private static  async Task<AcmeAccount> AcmeAccountFactory(string email)
+        {
+           
+                // Create new registration
+                var account1 = await client.NewRegistraton("mailto:" + email);
+
+
+                // Accept terms of services
+                account1.Data.Agreement = account1.GetTermsOfServiceUri();
+                account1 = await client.UpdateRegistration(account1);
+                return account1;
+           
         }
 
         private async Task<bool> CertExpiredAsync(CloudBlockBlob certBlob)

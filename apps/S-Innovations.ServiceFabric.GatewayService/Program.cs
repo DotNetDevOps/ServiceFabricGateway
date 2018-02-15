@@ -17,6 +17,7 @@ using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions;
 using SInnovations.Unity.AspNetCore;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore;
+using ACMESharp.PKI;
 
 namespace SInnovations.ServiceFabric.GatewayService
 {
@@ -29,7 +30,7 @@ namespace SInnovations.ServiceFabric.GatewayService
 
         public static void Main(string[] args)
         {
-
+            var cp = CertificateProvider.GetProvider("BouncyCastle");
 
             using (var container = new FabricContainer())
             {
@@ -56,7 +57,7 @@ namespace SInnovations.ServiceFabric.GatewayService
 
                 container.WithLetsEncryptService(new LetsEncryptServiceOptions
                 {
-                    BaseUri = "https://acme-v01.api.letsencrypt.org"
+                 //   BaseUri = "https://acme-v01.api.letsencrypt.org"
                 });
 
                 container.WithStatelessService<NginxGatewayService>("GatewayServiceType");

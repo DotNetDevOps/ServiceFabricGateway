@@ -13,7 +13,9 @@ namespace SInnovations.ServiceFabric.CoreCLR.Tools.FabUtil
         [MTAThread]
         public static void Main(string[] args)
         {
-               
+
+
+            var framework =   args.Any(a => a.IndexOf("netcoreapp2.0") != -1) && false ? "netcoreapp2.0" : "net45";
  
             var basePath = string.Join("/", AppContext.BaseDirectory.Split(new[] { '/', '\\' })
                 .TakeWhile(s => !s.Equals(".nuget", StringComparison.OrdinalIgnoreCase)));
@@ -21,9 +23,9 @@ namespace SInnovations.ServiceFabric.CoreCLR.Tools.FabUtil
             var versions = Directory.EnumerateDirectories(actorPath).Select(k => k.Substring(actorPath.Length + 1)).ToList();
           
            //TODO nuget versioning from current dependencies.
-           var fileName = Path.Combine(basePath, $@".nuget\packages\Microsoft.ServiceFabric.Actors\{versions.Last()}\build\FabActUtil.exe");
+           var fileName = Path.Combine(basePath, $@".nuget\packages\Microsoft.ServiceFabric.Actors\{versions.Last()}\build\{framework}\");
             Console.WriteLine(fileName);
-            if (!File.Exists(fileName))
+            if (!Directory.Exists(fileName))
             {
                 throw new Exception("FabActUtil not found");
             }
@@ -40,8 +42,8 @@ namespace SInnovations.ServiceFabric.CoreCLR.Tools.FabUtil
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
 
-                FileName = fileName,
-                Arguments = string.Join(" ",  args.Select(a=>$"\"{a}\""))
+                FileName = framework=="net45" ? fileName+ "FabActUtil.exe" : "dotnet",
+                Arguments = (framework == "net45" ? "":$"\"{fileName}/FabActUtil.dll\" ")+ string.Join(" ",  args.Select(a=>$"\"{a}\""))
             });
 
             // Depending on your application you may either prioritize the IO or the exact opposite
