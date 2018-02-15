@@ -57,7 +57,7 @@ namespace SInnovations.ServiceFabric.GatewayService
 
                 container.WithLetsEncryptService(new LetsEncryptServiceOptions
                 {
-                 //   BaseUri = "https://acme-v01.api.letsencrypt.org"
+                    BaseUri = "https://acme-v01.api.letsencrypt.org"
                 });
 
                 container.WithStatelessService<NginxGatewayService>("GatewayServiceType");

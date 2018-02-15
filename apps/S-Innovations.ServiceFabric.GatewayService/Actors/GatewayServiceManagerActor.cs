@@ -111,7 +111,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
             }
         }
-        public static AcmeClient client = new AcmeClient(WellKnownServers.LetsEncryptStaging);
+        public static AcmeClient client = new AcmeClient(WellKnownServers.LetsEncrypt);
         public static ConcurrentDictionary<string, Task<AcmeAccount>> _acmeaccounts = new ConcurrentDictionary<string, Task<AcmeAccount>>();
 
         public async Task ReceiveReminderAsync(string reminderName, byte[] context, TimeSpan dueTime, TimeSpan period)

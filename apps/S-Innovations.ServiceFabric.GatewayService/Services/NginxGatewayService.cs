@@ -114,7 +114,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                        {
                             Enabled = true,
                             SignerEmail = "info@earthml.com",
-                            UseHttp01Challenge = true
+                       //     UseHttp01Challenge = true
                        },
                     }
                 }
