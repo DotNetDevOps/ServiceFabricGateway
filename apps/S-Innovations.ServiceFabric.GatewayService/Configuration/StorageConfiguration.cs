@@ -51,9 +51,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
             container.RegisterInstance(options);
             container.AddScoped<IRS256SignerStore, InMemoryRS256SignerStore>();
             container.AddScoped<IRS256SignerService, DefaultRS256SignerService>();
-            container.AddScoped<IAcmeClientService<AcmeClient>, CertesAcmeClientService>();
+            container.AddScoped<IAcmeClientService<AcmeContext>, CertesAcmeClientService>();
             container.AddScoped<IAcmeRegistrationStore, InMemoryAcmeRegistrationStore>();
-            container.AddScoped<ILetsEncryptChallengeService<AcmeClient>, CertesChallengeService>();
+            container.RegisterType<CertesChallengeService>(new global::Unity.Lifetime.HierarchicalLifetimeManager());
+            container.AddScoped<ILetsEncryptChallengeService<AcmeContext>, CertesChallengeService>();
+            container.AddScoped<IOrders, CertesChallengeService>();
             container.AddScoped<IDnsClient, LetsEncryptDnsMadeEasyManager>();
             container.AddScoped<DnsMadeEasyClientCredetials, DnsMadeEasyOptions>();
             container.AddScoped<LetsEncryptService<AcmeClient>>();
