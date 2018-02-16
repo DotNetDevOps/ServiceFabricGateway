@@ -179,7 +179,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                 var cert = await letsEncrypt.GenerateCertPairAsync(new GenerateCertificateRequestOptions
                 {
                     DnsIdentifier = certInfo.HostName,
-                    SignerEmail = certInfo.SslOptions.SignerEmail
+                    SignerEmail = certInfo.SslOptions.SignerEmail,
+                    PfxPassword = ""
                 });
 
                 await keyBlob.UploadFromByteArrayAsync(cert.Item1, 0, cert.Item1.Length);
