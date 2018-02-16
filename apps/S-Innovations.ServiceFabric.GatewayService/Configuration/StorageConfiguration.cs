@@ -32,6 +32,7 @@ using SInnovations.LetsEncrypt.Stores;
 using SInnovations.LetsEncrypt.Stores.Defaults;
 using SInnovations.ServiceFabric.Storage.Configuration;
 using SInnovations.ServiceFabric.Unity;
+using Certes;
 
 namespace SInnovations.ServiceFabric.GatewayService.Configuration
 {
@@ -50,12 +51,12 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
             container.RegisterInstance(options);
             container.AddScoped<IRS256SignerStore, InMemoryRS256SignerStore>();
             container.AddScoped<IRS256SignerService, DefaultRS256SignerService>();
-            container.AddScoped<IAcmeClientService, DefaultAcmeClientService>();
+            container.AddScoped<IAcmeClientService<AcmeClient>, CertesAcmeClientService>();
             container.AddScoped<IAcmeRegistrationStore, InMemoryAcmeRegistrationStore>();
-            container.AddScoped<ILetsEncryptChallengeService, DefaultDnsChallengeService>();
+            container.AddScoped<ILetsEncryptChallengeService<AcmeClient>, CertesChallengeService>();
             container.AddScoped<IDnsClient, LetsEncryptDnsMadeEasyManager>();
             container.AddScoped<DnsMadeEasyClientCredetials, DnsMadeEasyOptions>();
-            container.AddScoped<LetsEncryptService>();
+            container.AddScoped<LetsEncryptService<AcmeClient>>();
 
             return container;
         }

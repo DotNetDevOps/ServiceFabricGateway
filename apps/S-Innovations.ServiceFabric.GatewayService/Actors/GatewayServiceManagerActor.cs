@@ -53,7 +53,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
         public const string STATE_PROXY_DATA_NAME = "proxyData";
 
         private readonly StorageConfiguration Storage;
-        private readonly LetsEncryptService letsEncrypt;
+        private readonly LetsEncryptService<AcmeClient> letsEncrypt;
 
         private CloudStorageAccount StorageAccount;
 
@@ -61,7 +61,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
             ActorService actorService,
             ActorId actorId,
             StorageConfiguration storage,
-            LetsEncryptService letsEncrypt)
+            LetsEncryptService<AcmeClient> letsEncrypt)
             : base(actorService, actorId)
         {
             Storage = storage;
