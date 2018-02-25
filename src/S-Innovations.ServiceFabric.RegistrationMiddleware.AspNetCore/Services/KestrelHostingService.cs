@@ -349,7 +349,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
         public override void ConfigureBuilder(IWebHostBuilder builder)
         {
-            
+            base.ConfigureBuilder(builder);
             builder.UseStartup<TStartUp>();
         }
     }

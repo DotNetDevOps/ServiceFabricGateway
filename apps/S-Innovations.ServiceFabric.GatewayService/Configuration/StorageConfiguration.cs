@@ -41,7 +41,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
 
     public class cloudFlareDNs : IDnsClient
     {
-        string CF_ApiUrl = "https://api.cloudflare.com/client/v4/";
+        
  
 
         private LetsEncryptDnsMadeEasyManager dnsfallback;
@@ -65,7 +65,15 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
             {
                 var zone = "ac1d153353eebc8508f7bb31ef1ab46c";
 
-                var post = new HttpRequestMessage(HttpMethod.Post, $"https://api.cloudflare.com/client/v4/zones/{zone}/dns_records");
+                var get = new HttpRequestMessage(HttpMethod.Get, $"https://api.cloudflare.com/client/v4/zones/{zone}/dns_records?type=TXT&name={recordName}");
+                get.Headers.Add("X-Auth-Email", authEmail);
+                get.Headers.Add("X-Auth-Key", authKey);
+                var result = await http.SendAsync(get);
+                var resultdata = JToken.Parse(await result.Content.ReadAsStringAsync());
+                var id = resultdata.SelectToken("$.result[0].id")?.ToString();
+
+                var post = new HttpRequestMessage(string.IsNullOrEmpty(id) ? HttpMethod.Post : HttpMethod.Put,
+                    $"https://api.cloudflare.com/client/v4/zones/{zone}/dns_records{(string.IsNullOrEmpty(id)?"":$"/{id}")}");
                 post.Headers.Add("X-Auth-Email", authEmail);
                 post.Headers.Add("X-Auth-Key", authKey);
                 post.Content = new StringContent(
@@ -77,7 +85,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
                     }).ToString(), Encoding.UTF8, "application/json");
 
                 var respons = await http.SendAsync(post);
-                
+
+                await Task.Delay(30000);
             }
 
         }
