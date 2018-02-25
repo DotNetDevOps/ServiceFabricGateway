@@ -39,7 +39,7 @@ namespace SInnovations.ServiceFabric.Storage.Services
         {
             return this.CreateServiceRemotingInstanceListeners();
             // return new[] { new ServiceInstanceListener(Factory) };
-            //  return new[] { new ServiceInstanceListener(context => this.CreateServiceRemotingListener(context),"RPC") };
+           //   return new[] { new ServiceInstanceListener(context => this.CreateServiceRemotingListener(context),"RPC") };
 
             //return new[]
             //{

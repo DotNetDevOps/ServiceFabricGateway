@@ -25,14 +25,13 @@ using System;
 using System.Collections.Generic;
 using System.Fabric;
 using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Net;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Lifetime;
 using Unity.Injection;
+#if NETCORE20
+using Unity.Microsoft.DependencyInjection;
+#endif
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 {
@@ -138,7 +137,10 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
             services.AddSingleton(this);
 
             services.AddSingleton(Container);
+
+#if NETCORE10
             services.AddSingleton<IServiceProviderFactory<IServiceCollection>>(new UnityServiceProviderFactory(Container));
+#endif
             services.AddSingleton<IStartupFilter>(new UseForwardedHeadersStartupFilter($"{this.Context.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{Context.CodePackageActivationContext.CodePackageVersion}"));
 
         }
@@ -260,6 +262,10 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
         public virtual void ConfigureBuilder(IWebHostBuilder builder)
         {
+#if NETCORE20
+            builder.UseUnityServiceProvider(Container);
+#endif
+
             WebBuilderConfiguration?.Invoke(builder);
         }
 
@@ -343,6 +349,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
         public override void ConfigureBuilder(IWebHostBuilder builder)
         {
+            
             builder.UseStartup<TStartUp>();
         }
     }
