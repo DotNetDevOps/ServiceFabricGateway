@@ -33,7 +33,7 @@
     <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
     <PackageReference Include="S-Innovations.Unity.AspNetCore2" Version="1.0.0-pre-2018022403" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="2.0.2" />
-    <PackageReference Include="Serilog.Sinks.ApplicationInsights" Version="2.5.0" />
+    <PackageReference Include="Serilog.Sinks.ApplicationInsights" Version="2.5.1" />
     <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="1.0.0-pre-2018022403"></PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.HttpOverrides" Version="2.0.1" />
     <PackageReference Include="System.Threading.Tasks" Version="4.3.0" />

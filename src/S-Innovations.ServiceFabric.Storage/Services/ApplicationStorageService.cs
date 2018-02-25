@@ -11,8 +11,7 @@ using System.Collections.Generic;
 using System.Fabric;
 using System.Threading.Tasks;
 
-
-//[assembly: FabricTransportServiceRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
+[assembly: FabricTransportServiceRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
 
 namespace SInnovations.ServiceFabric.Storage.Services
 {
