@@ -26,6 +26,7 @@ using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Asn1;
 using System.Collections.Concurrent;
+using Certes.Acme.Resource;
 
 namespace SInnovations.ServiceFabric.GatewayService.Actors
 {
