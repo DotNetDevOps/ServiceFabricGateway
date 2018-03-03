@@ -29,6 +29,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Unity.Lifetime;
 using Unity.Injection;
+using Microsoft.ApplicationInsights.ServiceFabric.Module;
 #if NETCORE20
 using Unity.Microsoft.DependencyInjection;
 #endif
@@ -186,8 +187,13 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                                 services.AddSingleton(listener);
                                 services.AddSingleton((sp)=> new KestrelHostingAddresss{Url = this.GetAddresses()["kestrel"]  });
 
-                            //    services.AddSingleton<ITelemetryInitializer>((serviceProvider) => FabricTelemetryInitializerExtension.CreateFabricTelemetryInitializer(serviceContext));
-                                
+                                services.AddSingleton<ITelemetryInitializer>((serviceProvider) => FabricTelemetryInitializerExtension.CreateFabricTelemetryInitializer(serviceContext))
+                                    .AddSingleton<ITelemetryModule>(new ServiceRemotingDependencyTrackingTelemetryModule())
+                                    .AddSingleton<ITelemetryModule>(new ServiceRemotingRequestTrackingTelemetryModule());
+
+                                services.AddSingleton(new Microsoft.ApplicationInsights.ServiceFabric.CodePackageVersionTelemetryInitializer());
+
+
                             });
 
                             if (Container.IsRegistered<IConfiguration>())
