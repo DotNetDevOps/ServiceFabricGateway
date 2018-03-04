@@ -37,7 +37,7 @@
     <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="1.0.0-pre-2018030401"></PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.HttpOverrides" Version="2.0.1" />
     <PackageReference Include="System.Threading.Tasks" Version="4.3.0" />
-    <PackageReference Include="Unity.Microsoft.DependencyInjection" Version="2.0.7" />
+    <PackageReference Include="Unity.Microsoft.DependencyInjection" Version="2.0.9" />
   </ItemGroup>
 
   <ItemGroup>
