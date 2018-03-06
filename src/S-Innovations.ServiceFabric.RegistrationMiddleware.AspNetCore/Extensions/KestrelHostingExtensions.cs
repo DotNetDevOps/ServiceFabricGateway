@@ -20,19 +20,39 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
 {
     public static class KestrelHostingExtensions
     {
+        private static List<Action<LoggerConfiguration>> _configurations = new List<Action<LoggerConfiguration>>();
         public static IUnityContainer ConfigureSerilogging(this IUnityContainer container, Action<LoggerConfiguration> configure)
         {
             if (!container.IsRegistered<LoggerConfiguration>())
             {
                 container.RegisterType<Serilog.Core.Logger>(new ContainerControlledLifetimeManager(),
-                    new InjectionFactory(c => c.Resolve<LoggerConfiguration>().CreateLogger()));
+                    new InjectionFactory(c => {
+                        var configuration = c.Resolve<LoggerConfiguration>();
+
+                        foreach (var modify in _configurations)
+                        {
+                            modify(configuration);
+                        }
+
+                        return configuration.CreateLogger();
+
+
+                        }));
 
                 container.RegisterInstance(new LoggerConfiguration());
                 container.RegisterType<ILoggerFactory>(new ContainerControlledLifetimeManager(),
-                     new InjectionFactory((c) => new LoggerFactory().AddSerilog(c.Resolve<Serilog.Core.Logger>())));
+                     new InjectionFactory((c) => {
+
+                        
+
+                         return new LoggerFactory().AddSerilog(c.Resolve<Serilog.Core.Logger>());
+
+                         }));
             }
 
-            configure(container.Resolve<LoggerConfiguration>());
+            _configurations.Add(configure);
+
+            //configure(container.Resolve<LoggerConfiguration>());
 
             return container;
         }
