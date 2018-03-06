@@ -14,6 +14,7 @@ using System;
 using Unity.Injection;
 using Unity.Lifetime;
 using Microsoft.Extensions.Options;
+using System.Collections.Generic;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions
 {
@@ -85,6 +86,11 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
             });
 
             return container;
+        }
+
+        public static string BuildResourceProviderLocation(this IEnumerable<string> providers, bool subscriptions = true, bool resourceGroup = true)
+        {
+            return $"~* ^/{(subscriptions ? "(subscriptions/.*/)?" : "")}{(resourceGroup ? "(resourcegroups/.*/)?" : "")}providers/({string.Join(" | ", providers)})";
         }
     }
 }

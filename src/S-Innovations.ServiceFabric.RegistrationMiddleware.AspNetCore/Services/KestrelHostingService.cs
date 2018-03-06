@@ -191,8 +191,12 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                                     .AddSingleton<ITelemetryModule>(new ServiceRemotingDependencyTrackingTelemetryModule())
                                     .AddSingleton<ITelemetryModule>(new ServiceRemotingRequestTrackingTelemetryModule());
 
-                                services.AddSingleton(new Microsoft.ApplicationInsights.ServiceFabric.CodePackageVersionTelemetryInitializer());
+                                services.AddSingleton(new CodePackageVersionTelemetryInitializer());
 
+                                if (Container.IsRegistered<IConfiguration>())
+                                { 
+                                    services.AddSingleton((sp)=>Container.Resolve<IConfiguration>());
+                                 }
 
                             });
 
