@@ -39,5 +39,7 @@ namespace SInnovations.ServiceFabric.Gateway.Model
 
         [DataMember]
         public ProxyPassCacheOptions CacheOptions { get; set; } = new ProxyPassCacheOptions();
+        [DataMember]
+        public Dictionary<string, object> Properties { get; set; } = new Dictionary<string, object>();
     }
 }

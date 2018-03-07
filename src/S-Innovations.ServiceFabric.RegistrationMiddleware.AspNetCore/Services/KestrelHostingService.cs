@@ -336,7 +336,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                     BackendPath = backAddress,
                     ServiceName = Context.ServiceName,
                     ServiceVersion = Context.CodePackageActivationContext.GetServiceManifestVersion(),
-                    CacheOptions = gw.CacheOptions
+                    CacheOptions = gw.CacheOptions,
+                    Properties = gw.Properties
                 });
             
         }

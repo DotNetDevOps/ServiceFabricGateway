@@ -15,6 +15,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model
         public string ServerName { get; set; }
         public SslOptions Ssl { get; set; } = new SslOptions();
         public ProxyPassCacheOptions CacheOptions { get; set; } = new ProxyPassCacheOptions();
+
+        public Dictionary<string, object> Properties { get; set; } = new Dictionary<string, object>();
        
     }
 }

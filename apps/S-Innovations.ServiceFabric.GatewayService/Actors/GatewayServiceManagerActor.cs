@@ -27,6 +27,7 @@ using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Asn1;
 using System.Collections.Concurrent;
 using Certes.Acme.Resource;
+using SInnovations.ServiceFabric.GatewayService.Configuration;
 
 namespace SInnovations.ServiceFabric.GatewayService.Actors
 {
@@ -55,6 +56,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
         private readonly StorageConfiguration Storage;
         private readonly LetsEncryptService<AcmeContext> letsEncrypt;
+        private readonly CloudFlareZoneService cloudFlareZoneService;
 
         private CloudStorageAccount StorageAccount;
 
@@ -62,9 +64,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
             ActorService actorService,
             ActorId actorId,
             StorageConfiguration storage,
+            CloudFlareZoneService cloudFlareZoneService,
             LetsEncryptService<AcmeContext> letsEncrypt)
             : base(actorService, actorId)
         {
+            this.cloudFlareZoneService = cloudFlareZoneService;
             Storage = storage;
             this.letsEncrypt = letsEncrypt;
         }
@@ -370,6 +374,15 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
         public async Task RegisterGatewayServiceAsync(GatewayServiceRegistrationData data)
         {
+
+            if (data.Properties.ContainsKey("CloudFlareZoneId"))
+            {
+                var dnsidentifiers = data.ServerName.Split(' ').Select(d => string.Join(".", d.Split('.').TakeLast(2)).ToLower()).Distinct().ToArray();
+                if (dnsidentifiers.Length == 1)
+                {
+                    await cloudFlareZoneService.UpdateZoneIdAsync(dnsidentifiers.First(), data.Properties["CloudFlareZoneId"] as string);
+                }
+            }
 
             var proxies = await GetGatewayServicesAsync();
 

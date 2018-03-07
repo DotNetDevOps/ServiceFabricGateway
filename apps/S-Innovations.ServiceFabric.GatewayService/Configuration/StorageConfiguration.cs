@@ -38,20 +38,35 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
 {
 
 
+    public class CloudFlareZoneService
+    {
+        private readonly Dictionary<string, string> _zones = new Dictionary<string,string>();
+        public Task<string> GetZoneIdAsync(string dnsIdentifier)
+        {
+            return Task.FromResult(_zones[dnsIdentifier]);
+        }
 
-    public class cloudFlareDNs : IDnsClient
+        public Task UpdateZoneIdAsync(string v1, string v2)
+        {
+            _zones[v1] = v2;
+            return Task.CompletedTask;
+        }
+    }
+    public class CloudFlareDNSClient : IDnsClient
     {
         
  
 
         private LetsEncryptDnsMadeEasyManager dnsfallback;
+        private readonly CloudFlareZoneService zoneService;
         private readonly HttpClient http;
         private readonly string authKey;
         private readonly string authEmail;
-        public cloudFlareDNs(HttpClient http, LetsEncryptDnsMadeEasyManager dnsfallback , IOptions<KeyVaultOptions> secrets)
+        public CloudFlareDNSClient(HttpClient http, LetsEncryptDnsMadeEasyManager dnsfallback , IOptions<KeyVaultOptions> secrets, CloudFlareZoneService cloudFlareZoneService)
         {
             this.dnsfallback = dnsfallback;
             this.http = http;
+            this.zoneService = cloudFlareZoneService;
             var key = secrets.Value.CloudFlare;
 
             this.authEmail = key.Substring(0, key.IndexOf(":"));
@@ -61,9 +76,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
         {
             await dnsfallback.EnsureTxtRecordCreatedAsync( dnsIdentifier,  recordName, recordValue);
 
-            if (dnsIdentifier.EndsWith("earthml.com"))
-            {
-                var zone = "ac1d153353eebc8508f7bb31ef1ab46c";
+
+            var zone = await zoneService.GetZoneIdAsync(dnsIdentifier); //  "ac1d153353eebc8508f7bb31ef1ab46c";
 
                 var get = new HttpRequestMessage(HttpMethod.Get, $"https://api.cloudflare.com/client/v4/zones/{zone}/dns_records?type=TXT&name={recordName}");
                 get.Headers.Add("X-Auth-Email", authEmail);
@@ -87,7 +101,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
                 var respons = await http.SendAsync(post);
 
                 await Task.Delay(30000);
-            }
+     
 
         }
     }
@@ -108,7 +122,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
             container.AddScoped<ILetsEncryptChallengeService<AcmeContext>, CertesChallengeService>();
             container.AddScoped<IOrders, CertesChallengeService>();
 
-            container.AddScoped<IDnsClient, cloudFlareDNs>();
+            container.RegisterInstance(new CloudFlareZoneService());
+            container.AddScoped<IDnsClient, CloudFlareDNSClient>();
 
             container.AddScoped<DnsMadeEasyClientCredetials, DnsMadeEasyOptions>();
             container.AddScoped<LetsEncryptService<AcmeClient>>();

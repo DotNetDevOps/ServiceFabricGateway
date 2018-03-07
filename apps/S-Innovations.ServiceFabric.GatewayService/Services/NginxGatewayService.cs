@@ -44,7 +44,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         public NginxGatewayService(StatelessServiceContext serviceContext, IUnityContainer container, ILoggerFactory factory, StorageConfiguration storage)
             : base(new KestrelHostingServiceOptions
             {
-                // ServiceEndpointName = "PrivateManageServiceEndpoint",
+
                 GatewayOptions = new GatewayOptions
                 {
                     Key = "NGINX-MANAGER",
@@ -55,6 +55,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         Enabled = true,
                         SignerEmail = "info@earthml.com"
                     },
+                    Properties = new Dictionary<string, object> { {"CloudFlareZoneId", "ac1d153353eebc8508f7bb31ef1ab46c" } }
                 },
                 AdditionalGateways = new GatewayOptions[]
                 {
