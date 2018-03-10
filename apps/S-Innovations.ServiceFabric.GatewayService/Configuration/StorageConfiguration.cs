@@ -40,10 +40,13 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
 
     public class CloudFlareZoneService
     {
-        private readonly Dictionary<string, string> _zones = new Dictionary<string,string>();
+        private readonly Dictionary<string, string> _zones = new Dictionary<string, string>();
         public Task<string> GetZoneIdAsync(string dnsIdentifier)
         {
-            return Task.FromResult(_zones[dnsIdentifier]);
+            var domain = string.Join(".", dnsIdentifier.Split(".").TakeLast(2)).ToLower();
+            if (_zones.ContainsKey(domain))
+                return Task.FromResult(_zones[dnsIdentifier]);
+            return Task.FromResult(string.Empty);
         }
 
         public Task UpdateZoneIdAsync(string v1, string v2)
@@ -54,15 +57,15 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
     }
     public class CloudFlareDNSClient : IDnsClient
     {
-        
- 
+
+
 
         private LetsEncryptDnsMadeEasyManager dnsfallback;
         private readonly CloudFlareZoneService zoneService;
         private readonly HttpClient http;
         private readonly string authKey;
         private readonly string authEmail;
-        public CloudFlareDNSClient(HttpClient http, LetsEncryptDnsMadeEasyManager dnsfallback , IOptions<KeyVaultOptions> secrets, CloudFlareZoneService cloudFlareZoneService)
+        public CloudFlareDNSClient(HttpClient http, LetsEncryptDnsMadeEasyManager dnsfallback, IOptions<KeyVaultOptions> secrets, CloudFlareZoneService cloudFlareZoneService)
         {
             this.dnsfallback = dnsfallback;
             this.http = http;
@@ -70,15 +73,16 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
             var key = secrets.Value.CloudFlare;
 
             this.authEmail = key.Substring(0, key.IndexOf(":"));
-            this.authKey = key.Substring(key.IndexOf(":")+1);
+            this.authKey = key.Substring(key.IndexOf(":") + 1);
         }
         public async Task EnsureTxtRecordCreatedAsync(string dnsIdentifier, string recordName, string recordValue)
         {
-            await dnsfallback.EnsureTxtRecordCreatedAsync( dnsIdentifier,  recordName, recordValue);
+
 
 
             var zone = await zoneService.GetZoneIdAsync(dnsIdentifier); //  "ac1d153353eebc8508f7bb31ef1ab46c";
-
+            if (!string.IsNullOrEmpty(zone))
+            {
                 var get = new HttpRequestMessage(HttpMethod.Get, $"https://api.cloudflare.com/client/v4/zones/{zone}/dns_records?type=TXT&name={recordName}");
                 get.Headers.Add("X-Auth-Email", authEmail);
                 get.Headers.Add("X-Auth-Key", authKey);
@@ -87,7 +91,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
                 var id = resultdata.SelectToken("$.result[0].id")?.ToString();
 
                 var post = new HttpRequestMessage(string.IsNullOrEmpty(id) ? HttpMethod.Post : HttpMethod.Put,
-                    $"https://api.cloudflare.com/client/v4/zones/{zone}/dns_records{(string.IsNullOrEmpty(id)?"":$"/{id}")}");
+                    $"https://api.cloudflare.com/client/v4/zones/{zone}/dns_records{(string.IsNullOrEmpty(id) ? "" : $"/{id}")}");
                 post.Headers.Add("X-Auth-Email", authEmail);
                 post.Headers.Add("X-Auth-Key", authKey);
                 post.Content = new StringContent(
@@ -101,7 +105,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
                 var respons = await http.SendAsync(post);
 
                 await Task.Delay(30000);
-     
+            }
+            else
+            {
+                await dnsfallback.EnsureTxtRecordCreatedAsync(dnsIdentifier, recordName, recordValue);
+            }
 
         }
     }
@@ -131,9 +139,9 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
             return container;
         }
     }
-    
 
-    
+
+
     public class DnsMadeEasyOptions : DnsMadeEasyClientCredetials
     {
         public DnsMadeEasyOptions(IOptions<KeyVaultOptions> keyvault)
@@ -143,20 +151,20 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
             this.ApiSecret = parts[1];
         }
     }
-   
+
     public class KeyVaultOptions
     {
         public string DnsMadeEasyCredentials { get; set; }
         public string CloudFlare { get; set; }
     }
 
-    
-  
-    
 
 
 
-    
 
-   
+
+
+
+
+
 }

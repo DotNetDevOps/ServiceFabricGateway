@@ -43,7 +43,7 @@ namespace SInnovations.ServiceFabric.Storage.Extensions
 
             
         }
-        public static IServiceCollection AddApplicationStorageDataProtection(this IServiceCollection services, IUnityContainer container, X509Certificate2 cert )
+        public static IServiceCollection AddApplicationStorageDataProtection(this IServiceCollection services, IUnityContainer container, X509Certificate2 cert, string applicationName )
         {
             if (container != null)
             {
@@ -59,7 +59,7 @@ namespace SInnovations.ServiceFabric.Storage.Extensions
 
                     services.AddDataProtection()
                      .ProtectKeysWithCertificate(cert)
-                     .PersistKeysToAzureBlobStorage(c.GetBlockBlobReference("dummy.csrf"));
+                     .PersistKeysToAzureBlobStorage(c.GetBlockBlobReference(applicationName+".csrf"));
                 }
                 catch (Exception ex)
                 {
