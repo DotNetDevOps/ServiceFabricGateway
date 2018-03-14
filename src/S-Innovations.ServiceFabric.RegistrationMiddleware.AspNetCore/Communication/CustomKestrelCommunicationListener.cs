@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
+using Polly;
+using Polly.Retry;
 using System;
 using System.Fabric;
 using System.Fabric.Description;
@@ -102,6 +104,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Communica
         {
             if (this.webHost != null)
             {
+            
                 this.webHost.Dispose();
             }
         }
@@ -124,6 +127,16 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Communica
             return Task.FromResult(true);
         }
 
+        RetryPolicy retry = Policy
+              .Handle<Exception>()
+              .WaitAndRetryAsync(new[]
+              {
+                TimeSpan.FromSeconds(1),
+                TimeSpan.FromSeconds(2),
+                TimeSpan.FromSeconds(4),
+                TimeSpan.FromSeconds(8),
+     
+              });
         /// <summary>
         /// This method causes the communication listener to be opened. Once the Open
         /// completes, the communication listener becomes usable - accepts and sends messages.
@@ -142,19 +155,43 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Communica
                 throw new InvalidOperationException("webhost is null");
             }
 
-            this.webHost.Start();
 
-            var url = this.webHost.ServerFeatures.Get<IServerAddressesFeature>().Addresses
-                    .Select(a => a.Replace("://+", "://" + this.serviceContext.NodeContext.IPAddressOrFQDN)).FirstOrDefault();
+            return retry.ExecuteAsync(async () =>
+            {
 
+#if NETCORE20
+                await this.webHost.StartAsync();
+#else
+                await Task.Run(() => this.webHost.Start());
+#endif
 
-            // When returning url to naming service, add UrlSuffix to it.
-            // This UrlSuffix will be used by middleware to:
-            //    - drop calls not intended for the service and return 410.
-            //    - modify Path and PathBase in Microsoft.AspNetCore.Http.HttpRequest to be sent correctly to the service code.
-            url = url.TrimEnd(new[] { '/' }) + this.UrlSuffix;
+                var url = this.webHost.ServerFeatures.Get<IServerAddressesFeature>().Addresses
+                        .Select(a => a.Replace("://+", "://" + this.serviceContext.NodeContext.IPAddressOrFQDN)).FirstOrDefault();
 
-            return Task.FromResult(url);
+                if (url == null)
+                {
+                    throw new InvalidOperationException("no url");
+                }
+
+                var publishAddress = this.serviceContext.PublishAddress;
+
+                if (url.Contains("://+:"))
+                {
+                    url = url.Replace("://+:", $"://{publishAddress}:");
+                }
+                else if (url.Contains("://[::]:"))
+                {
+                    url = url.Replace("://[::]:", $"://{publishAddress}:");
+                }
+
+                // When returning url to naming service, add UrlSuffix to it.
+                // This UrlSuffix will be used by middleware to:
+                //    - drop calls not intended for the service and return 410.
+                //    - modify Path and PathBase in Microsoft.AspNetCore.Http.HttpRequest to be sent correctly to the service code.
+                url = url.TrimEnd(new[] { '/' }) + this.UrlSuffix;
+
+                return url;
+            });
         }
 
         /// <summary>
@@ -247,25 +284,25 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Communica
         }
     }
 
-    public class CustomKestrelCommunicationListener : KestrelCommunicationListener
-    {
-        private readonly ServiceContext _serviceContext;
-        public CustomKestrelCommunicationListener(ServiceContext serviceContext, string serviceEdpoint, Func<string, AspNetCoreCommunicationListener, IWebHost> build) : base(serviceContext, serviceEdpoint, build)
-        {
-            _serviceContext = serviceContext;           
-        }        
+    //public class CustomKestrelCommunicationListener : KestrelCommunicationListener
+    //{
+    //    private readonly ServiceContext _serviceContext;
+    //    public CustomKestrelCommunicationListener(ServiceContext serviceContext, string serviceEdpoint, Func<string, AspNetCoreCommunicationListener, IWebHost> build) : base(serviceContext, serviceEdpoint, build)
+    //    {
+    //        _serviceContext = serviceContext;           
+    //    }        
 
-        public override async Task<string> OpenAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                var url = await base.OpenAsync(cancellationToken).ConfigureAwait(false);
+    //    public override async Task<string> OpenAsync(CancellationToken cancellationToken)
+    //    {
+    //        try
+    //        {
+    //            var url = await base.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-                return url.Replace("[::]", _serviceContext.NodeContext.IPAddressOrFQDN);
-            }catch(Exception ex)
-            {
-                throw;
-            }
-        }
-    }
+    //            return url.Replace("[::]", _serviceContext.NodeContext.IPAddressOrFQDN);
+    //        }catch(Exception ex)
+    //        {
+    //            throw;
+    //        }
+    //    }
+    //}
 }
