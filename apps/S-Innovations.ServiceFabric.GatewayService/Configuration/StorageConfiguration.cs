@@ -33,6 +33,7 @@ using SInnovations.LetsEncrypt.Stores.Defaults;
 using SInnovations.ServiceFabric.Storage.Configuration;
 using SInnovations.ServiceFabric.Unity;
 using Certes;
+using Unity.Lifetime;
 
 namespace SInnovations.ServiceFabric.GatewayService.Configuration
 {
@@ -126,7 +127,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
             container.AddScoped<IRS256SignerService, DefaultRS256SignerService>();
             container.AddScoped<IAcmeClientService<AcmeContext>, CertesAcmeClientService>();
             container.AddScoped<IAcmeRegistrationStore, InMemoryAcmeRegistrationStore>();
-            container.RegisterType<CertesChallengeService>(new global::Unity.Lifetime.HierarchicalLifetimeManager());
+            container.RegisterType<CertesChallengeService>(new HierarchicalLifetimeManager());
             container.AddScoped<ILetsEncryptChallengeService<AcmeContext>, CertesChallengeService>();
             container.AddScoped<IOrders, CertesChallengeService>();
 
