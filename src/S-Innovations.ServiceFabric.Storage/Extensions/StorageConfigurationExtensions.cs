@@ -58,6 +58,7 @@ namespace SInnovations.ServiceFabric.Storage.Extensions
                     c.CreateIfNotExistsAsync().Wait();
 
                     services.AddDataProtection()
+                     .SetApplicationName(applicationName)
                      .ProtectKeysWithCertificate(cert)
                      .PersistKeysToAzureBlobStorage(c.GetBlockBlobReference(applicationName+".csrf"));
                 }
