@@ -124,7 +124,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
         {
             container.RegisterInstance(options);
             container.AddScoped<IRS256SignerStore, InMemoryRS256SignerStore>();
-            container.AddScoped<IRS256SignerService, DefaultRS256SignerService>();
+          //  container.AddScoped<IRS256SignerService, DefaultRS256SignerService>();
             container.AddScoped<IAcmeClientService<AcmeContext>, CertesAcmeClientService>();
             container.AddScoped<IAcmeRegistrationStore, InMemoryAcmeRegistrationStore>();
             container.RegisterType<CertesChallengeService>(new HierarchicalLifetimeManager());

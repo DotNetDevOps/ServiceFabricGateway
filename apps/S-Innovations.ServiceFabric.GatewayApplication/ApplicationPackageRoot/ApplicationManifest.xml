@@ -44,6 +44,11 @@
         <SingletonPartition />
       </StatelessService>
     </Service>
+    <Service Name="KeyVaultService">
+      <StatelessService ServiceTypeName="KeyVaultServiceType" InstanceCount="[GatewayService_InstanceCount]">
+        <SingletonPartition />
+      </StatelessService>
+    </Service>
     <Service Name="GatewayServiceManagerActorService" GeneratedIdRef="ef5ab963-c061-486e-bb1c-84bf1c2fc7e1|Persisted">
       <StatefulService ServiceTypeName="GatewayServiceManagerActorServiceType">
         <UniformInt64Partition PartitionCount="1" LowKey="-9223372036854775808" HighKey="9223372036854775807" />

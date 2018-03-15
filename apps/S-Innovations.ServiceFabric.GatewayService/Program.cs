@@ -17,7 +17,8 @@ using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions;
 using SInnovations.Unity.AspNetCore;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore;
-using ACMESharp.PKI;
+//using ACMESharp.PKI;
+using SInnovations.ServiceFabric.ResourceProvider;
 
 namespace SInnovations.ServiceFabric.GatewayService
 {
@@ -30,7 +31,7 @@ namespace SInnovations.ServiceFabric.GatewayService
 
         public static void Main(string[] args)
         {
-            var cp = CertificateProvider.GetProvider("BouncyCastle");
+           // var cp = CertificateProvider.GetProvider("BouncyCastle");
 
             using (var container = new FabricContainer())
             {
@@ -62,6 +63,8 @@ namespace SInnovations.ServiceFabric.GatewayService
 
                 container.WithStatelessService<NginxGatewayService>("GatewayServiceType");
                 container.WithStatelessService<ApplicationStorageService>("ApplicationStorageServiceType");
+                container.WithStatelessService<KeyVaultService>("KeyVaultServiceType");
+
 
                 container.WithActor<GatewayServiceManagerActor, GatewayServiceManagerActorService>((services,context, actorType, factory) => new GatewayServiceManagerActorService(context, actorType, factory));
 
