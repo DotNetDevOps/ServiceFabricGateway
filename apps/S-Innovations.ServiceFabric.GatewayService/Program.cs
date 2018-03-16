@@ -58,12 +58,13 @@ namespace SInnovations.ServiceFabric.GatewayService
 
                 container.WithLetsEncryptService(new LetsEncryptServiceOptions
                 {
-                    BaseUri = Certes.Acme.WellKnownServers.LetsEncryptStagingV2.AbsoluteUri// "https://acme-v01.api.letsencrypt.org"
+                    BaseUri = Certes.Acme.WellKnownServers.LetsEncryptV2.AbsoluteUri// "https://acme-v01.api.letsencrypt.org"
                 });
 
                 container.WithStatelessService<NginxGatewayService>("GatewayServiceType");
                 container.WithStatelessService<ApplicationStorageService>("ApplicationStorageServiceType");
                 container.WithStatelessService<KeyVaultService>("KeyVaultServiceType");
+                container.WithStatelessService<ResourceProviderService>("ResourceProviderServiceType");
 
 
                 container.WithActor<GatewayServiceManagerActor, GatewayServiceManagerActorService>((services,context, actorType, factory) => new GatewayServiceManagerActorService(context, actorType, factory));

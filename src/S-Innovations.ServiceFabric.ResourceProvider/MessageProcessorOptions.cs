@@ -8,6 +8,7 @@ namespace SInnovations.ServiceFabric.ResourceProvider
     {
         public int ConcurrentMessagesProcesses { get; set; }
         public string ListenerConnectionString { get; set; }
+        public string ListenerConnectionStringKey { get; set; }
         public string QueuePath { get; set; }
       }
 

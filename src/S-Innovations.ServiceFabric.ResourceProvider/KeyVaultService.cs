@@ -32,7 +32,7 @@ namespace SInnovations.ServiceFabric.ResourceProvider
 
         public Task<string> GetSecretAsync(string key)
         {
-            return Task.FromResult(configuration.GetSection("KeyVault")[key]);
+            return Task.FromResult(configuration.GetSection("KeyVault:"+key).Value);
         }
     }
 

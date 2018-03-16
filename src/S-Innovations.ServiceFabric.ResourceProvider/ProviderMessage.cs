@@ -11,7 +11,6 @@ namespace SInnovations.ServiceFabric.ResourceProvider
     public class ProviderMessage : BaseMessage, IResourceProviderBaseMessage
     {
         public string ProviderId { get; set; }
-        public byte[] Data { get; set; }
     }
 
 }

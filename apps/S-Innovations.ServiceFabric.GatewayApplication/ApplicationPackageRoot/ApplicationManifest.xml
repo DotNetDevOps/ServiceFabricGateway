@@ -45,7 +45,12 @@
       </StatelessService>
     </Service>
     <Service Name="KeyVaultService">
-      <StatelessService ServiceTypeName="KeyVaultServiceType" InstanceCount="[GatewayService_InstanceCount]">
+      <StatelessService ServiceTypeName="KeyVaultServiceType">
+        <SingletonPartition />
+      </StatelessService>
+    </Service>
+    <Service Name="ResourceProviderService">
+      <StatelessService ServiceTypeName="ResourceProviderServiceType">
         <SingletonPartition />
       </StatelessService>
     </Service>

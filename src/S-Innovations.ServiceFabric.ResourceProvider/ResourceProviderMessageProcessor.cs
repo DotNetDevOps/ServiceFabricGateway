@@ -13,27 +13,121 @@ using SInnovations.Azure.MessageProcessor.Core.Notifications;
 using System.Diagnostics;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.ServiceFabric.Services.Runtime;
+using Microsoft.Extensions.Configuration;
+using System.Fabric;
+using System.Collections.Generic;
+using Microsoft.ServiceFabric.Services.Communication.Runtime;
+using Microsoft.ServiceFabric.Services.Remoting.Runtime;
 
- 
 namespace SInnovations.ServiceFabric.ResourceProvider
 {
+    public interface IResourceProviderService : IService
+    {
+
+    }
+    //public interface IFabicHostedServiceFactory<T> where T : IHostedService
+    //{
+    //    Task<T> CreateHostedServiceAsync();
+    //}
+    public class ResourceProviderAttribute : Attribute
+    {
+        public string ProviderNamespace { get; protected set; }
+        
+
+        public ResourceProviderAttribute(string providerNamespace)
+        {
+            ProviderNamespace = providerNamespace;
+        }
+    }
+
+    public class FabicHostedService<T> : StatelessService where T:IHostedService
+    {
+        private readonly T hostedService;
+
+        public FabicHostedService(StatelessServiceContext serviceContext,T hostedService ) : base(serviceContext)
+        {
+            this.hostedService = hostedService;
+        }
+
+       
+        protected override async Task RunAsync(CancellationToken cancellationToken)
+        {
+            await hostedService.StartAsync(cancellationToken);
+
+            await base.RunAsync(cancellationToken);
+        }
+        
+        protected override async Task OnCloseAsync(CancellationToken cancellationToken)
+        {
+            await hostedService.StopAsync(cancellationToken);
+
+            await base.OnCloseAsync(cancellationToken);
+        }
+    }
+    public class ResourceProviderService : StatelessService, IResourceProviderService
+    {
+        private readonly IConfigurationRoot configuration;
+
+        public ResourceProviderService(StatelessServiceContext serviceContext, IConfigurationRoot configuration) : base(serviceContext)
+        {
+            this.configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        }
+
+
+
+        protected override IEnumerable<ServiceInstanceListener> CreateServiceInstanceListeners()
+        {
+            return this.CreateServiceRemotingInstanceListeners();
+        }
+
+
+       
+    }
+
+    //public class ResourceProviderMessageProcessorFactory : IFabicHostedServiceFactory<ResourceProviderMessageProcessor>
+    //{
+    //    private readonly ILoggerFactory loggerFactory;
+    //    private readonly MessageProcessorOptions options;
+    //    private readonly IServiceScopeFactory serviceScopeFactory;
+
+    //    public ResourceProviderMessageProcessorFactory(ILoggerFactory loggerFactory, MessageProcessorOptions options, IServiceScopeFactory serviceScopeFactory)
+    //    {
+    //        this.loggerFactory = loggerFactory;
+    //        this.options = options;
+    //        this.serviceScopeFactory = serviceScopeFactory;
+    //    }
+    //    public Task<ResourceProviderMessageProcessor> CreateHostedServiceAsync()
+    //    {
+    //        return Task.FromResult(new ResourceProviderMessageProcessor(loggerFactory,options,serviceScopeFactory));    
+    //    }
+    //}
+
     public class ResourceProviderMessageProcessor : IHostedService
     {
         private readonly ILoggerFactory loggerFactory;
         private readonly MessageProcessorOptions options;
+        private readonly IKeyVaultService keyVaultService;
         private readonly IServiceScopeFactory serviceScopeFactory;
         private readonly ILogger logger;
         private IMessageProcessorClient _processor;
 
-        public ResourceProviderMessageProcessor(ILoggerFactory loggerFactory, MessageProcessorOptions options, IServiceScopeFactory serviceScopeFactory)
+        public ResourceProviderMessageProcessor(
+             IServiceScopeFactory serviceScopeFactory,
+            ILoggerFactory loggerFactory,
+            MessageProcessorOptions options,
+            IKeyVaultService keyVaultService 
+           )
         {
-            this.loggerFactory = loggerFactory;
-            this.options = options;
-            this.serviceScopeFactory = serviceScopeFactory;
+            this.loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+            this.options = options ?? throw new ArgumentNullException(nameof(options));
+            this.keyVaultService = keyVaultService ?? throw new ArgumentNullException(nameof(keyVaultService));
+            this.serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             this.logger = loggerFactory.CreateLogger<ResourceProviderMessageProcessor>();
         }
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            options.ListenerConnectionString = options.ListenerConnectionString ?? await keyVaultService.GetSecretAsync(options.ListenerConnectionStringKey);
             _processor = CreateProcessor();
             await _processor.StartProcessorAsync();
         }
