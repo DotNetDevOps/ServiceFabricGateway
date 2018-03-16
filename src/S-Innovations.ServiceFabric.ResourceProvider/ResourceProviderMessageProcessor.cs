@@ -128,6 +128,10 @@ namespace SInnovations.ServiceFabric.ResourceProvider
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             options.ListenerConnectionString = options.ListenerConnectionString ?? await keyVaultService.GetSecretAsync(options.ListenerConnectionStringKey);
+
+            if (string.IsNullOrEmpty(options.ListenerConnectionString))
+                throw new Exception("Missing connection string");
+
             _processor = CreateProcessor();
             await _processor.StartProcessorAsync();
         }
