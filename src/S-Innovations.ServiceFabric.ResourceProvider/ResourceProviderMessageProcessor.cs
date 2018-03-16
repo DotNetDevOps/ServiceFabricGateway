@@ -103,7 +103,7 @@ namespace SInnovations.ServiceFabric.ResourceProvider
     //    }
     //}
 
-    public class ResourceProviderMessageProcessor : IHostedService
+    public class ResourceProviderMessageProcessorHostedService : IHostedService
     {
         private readonly ILoggerFactory loggerFactory;
         private readonly MessageProcessorOptions options;
@@ -112,7 +112,7 @@ namespace SInnovations.ServiceFabric.ResourceProvider
         private readonly ILogger logger;
         private IMessageProcessorClient _processor;
 
-        public ResourceProviderMessageProcessor(
+        public ResourceProviderMessageProcessorHostedService(
              IServiceScopeFactory serviceScopeFactory,
             ILoggerFactory loggerFactory,
             MessageProcessorOptions options,
@@ -123,17 +123,25 @@ namespace SInnovations.ServiceFabric.ResourceProvider
             this.options = options ?? throw new ArgumentNullException(nameof(options));
             this.keyVaultService = keyVaultService ?? throw new ArgumentNullException(nameof(keyVaultService));
             this.serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
-            this.logger = loggerFactory.CreateLogger<ResourceProviderMessageProcessor>();
+            this.logger = loggerFactory.CreateLogger<ResourceProviderMessageProcessorHostedService>();
         }
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            options.ListenerConnectionString = options.ListenerConnectionString ?? await keyVaultService.GetSecretAsync(options.ListenerConnectionStringKey);
+            options.ListenerConnectionString = options.ListenerConnectionString ??
+                await keyVaultService.GetSecretAsync(options.ListenerConnectionStringKey);
 
             if (string.IsNullOrEmpty(options.ListenerConnectionString))
                 throw new Exception("Missing connection string");
 
             _processor = CreateProcessor();
-            await _processor.StartProcessorAsync();
+            try
+            {
+                await _processor.StartProcessorAsync();
+            }catch(Exception ex)
+            {
+                logger.LogError(ex, "Failed To start hosted service");
+                logger.LogInformation("Failed To start hosted service: {exception}", ex.ToString());
+            }
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
