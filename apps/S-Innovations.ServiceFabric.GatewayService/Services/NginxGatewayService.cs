@@ -227,6 +227,15 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 }
 
+                sb.AppendLine("\tmap $http_upgrade $connection_upgrade {");
+                sb.AppendLine("\t\tdefault upgrade;");
+                sb.AppendLine("\t\t''      keep-alive;");
+                sb.AppendLine("\t}");
+
+                sb.AppendLine("\tserver {");
+                sb.AppendLine("\t\t    return 444;");
+                sb.AppendLine("\t}");
+
                 foreach (var serverGroup in proxies.GroupByServerName())
                 {
                     var serverName = serverGroup.Key;
@@ -273,10 +282,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         sb.AppendLine("\t}");
                     }
 
-                    sb.AppendLine("\tmap $http_upgrade $connection_upgrade {");
-                    sb.AppendLine("\t\tdefault upgrade;");
-                    sb.AppendLine("\t\t''      keep-alive;");
-                    sb.AppendLine("\t}");
+
 
 
                     sb.AppendLine("\tserver {");
