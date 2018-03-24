@@ -194,8 +194,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     //$upstream_addr
                     sb.AppendLine($"\tupstream {upstreamName} {{");
 
-
-                    if (upstreams.Any(u => u.Properties.ContainsKey("upstream_ip_hash") && (bool)u.Properties["upstream_ip_hash"]))
+                    var upstreamIp_Hash = upstreams.Any(u => u.Properties.ContainsKey("upstream_ip_hash") && (bool)u.Properties["upstream_ip_hash"]);
+                    if (upstreamIp_Hash)
                     {
                         sb.AppendLine("\t\tip_hash;");
 
@@ -205,7 +205,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     foreach (var upstream in uniques)
                     {
 
-                        sb.AppendLine($"\t\tserver {new Uri(upstream.BackendPath).Authority.Replace("localhost", "127.0.0.1")} {(upstream.IPAddressOrFQDN != Context.NodeContext.IPAddressOrFQDN ? "backup" : "")};");
+                        sb.AppendLine($"\t\tserver {new Uri(upstream.BackendPath).Authority.Replace("localhost", "127.0.0.1")} {(upstream.IPAddressOrFQDN != Context.NodeContext.IPAddressOrFQDN && !upstreamIp_Hash ? "backup" : "")};");
                     }
                     sb.AppendLine("\t}");
 
