@@ -193,6 +193,15 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     var upstreamName = upstreams.Key.AbsoluteUri.Split('/').Last().Replace('.', '_');
                     //$upstream_addr
                     sb.AppendLine($"\tupstream {upstreamName} {{");
+
+
+                    if (upstreams.Any(u => u.Properties.ContainsKey("upstream_ip_hash") && (bool)u.Properties["upstream_ip_hash"]))
+                    {
+                        sb.AppendLine("\t\tip_hash;");
+
+                    }
+
+
                     foreach (var upstream in uniques)
                     {
 
