@@ -234,7 +234,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 sb.AppendLine("\tserver {");
                 sb.AppendLine($"\t\tlisten       {endpoint.Port};");
-                sb.AppendLine("\t\t    return 444;");
+                sb.AppendLine("\t\tserver_name   everything;");
+                sb.AppendLine("\t\tlocation / {");
+                sb.AppendLine("\t\t\treturn 444;");
+                sb.AppendLine("\t\t}");
                 sb.AppendLine("\t}");
 
                 foreach (var serverGroup in proxies.GroupByServerName())
