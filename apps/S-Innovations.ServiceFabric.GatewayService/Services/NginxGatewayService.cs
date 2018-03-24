@@ -229,7 +229,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         sslOn = state != null && state.Completed;
                     }
 
-                    if (serverName.StartsWith("www.") && serverGroup.Value.Any(a=>a.Properties.ContainsKey("www301") && (bool)a.Properties["www301"]))
+                    if (serverName.StartsWith("www.") && serverGroup.Value.Any(a => a.Properties.ContainsKey("www301") && (bool)a.Properties["www301"]))
                     {
                         sb.AppendLine("\tserver {");
                         {
@@ -246,7 +246,28 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         }
                         sb.AppendLine("\t}");
                     }
-                
+                    else if (serverGroup.Value.Any(a => a.Properties.ContainsKey("www301") && (bool)a.Properties["www301"]))
+                    {
+                        sb.AppendLine("\tserver {");
+                        {
+
+                            sb.AppendLine($"\t\tlisten       {endpoint.Port};");
+                            if (sslOn)
+                            {
+                                sb.AppendLine($"\t\tlisten       {sslEndpoint.Port} ssl;");
+                            }
+
+                            sb.AppendLine($"\t\tserver_name  www.{serverName};");
+                            sb.AppendLine($"\t\treturn 301 $scheme://{serverName}$request_uri;");
+                            sb.AppendLine();
+                        }
+                        sb.AppendLine("\t}");
+                    }
+
+                    sb.AppendLine("\tmap $http_upgrade $connection_upgrade {");
+                    sb.AppendLine("\t\tdefault upgrade;");
+                    sb.AppendLine("\t\t''      keep-alive;");
+                    sb.AppendLine("\t}");
 
 
                     sb.AppendLine("\tserver {");
@@ -403,7 +424,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
 
                 sb.AppendLine($"{tabs}proxy_set_header Upgrade $http_upgrade;");
-                sb.AppendLine($"{tabs}proxy_set_header Connection keep-alive;");
+                sb.AppendLine($"{tabs}proxy_set_header Connection $connection_upgrade;"); 
                 //
                 sb.AppendLine($"{tabs}proxy_set_header Host					  $host;");
                 sb.AppendLine($"{tabs}proxy_set_header X-Real-IP              $remote_addr;");
