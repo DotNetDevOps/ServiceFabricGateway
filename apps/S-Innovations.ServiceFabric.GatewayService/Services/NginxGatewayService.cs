@@ -241,6 +241,9 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 sb.AppendLine("\t\tlocation /heathcheck/ {");
                 sb.AppendLine("\t\t\treturn 200;");
                 sb.AppendLine("\t\t}");
+                sb.AppendLine("\t\tlocation /manage/ {");
+                sb.AppendLine("\t\t\treturn 200;");
+                sb.AppendLine("\t\t}");
                 sb.AppendLine("\t}");
 
                 foreach (var serverGroup in proxies.GroupByServerName())
