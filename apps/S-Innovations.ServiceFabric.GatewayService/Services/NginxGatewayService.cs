@@ -233,6 +233,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 sb.AppendLine("\t}");
 
                 sb.AppendLine("\tserver {");
+                sb.AppendLine($"\t\tlisten       {endpoint.Port};");
                 sb.AppendLine("\t\t    return 444;");
                 sb.AppendLine("\t}");
 
