@@ -13,6 +13,8 @@ using System.Fabric;
 
 namespace SInnovations.ServiceFabric.ResourceProvider
 {
+
+   
     public class KeyVaultService : StatelessService, IKeyVaultService
     {
         private readonly IConfigurationRoot configuration;
@@ -32,7 +34,13 @@ namespace SInnovations.ServiceFabric.ResourceProvider
 
         public Task<string> GetSecretAsync(string key)
         {
-            return Task.FromResult(configuration.GetSection("KeyVault:"+key).Value);
+            var value = configuration.GetSection("KeyVault:" + key).Value;
+            if (string.IsNullOrEmpty(value))
+            {
+                configuration.Reload();
+            }
+
+            return Task.FromResult(value);
         }
     }
 

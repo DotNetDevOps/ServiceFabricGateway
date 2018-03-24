@@ -229,6 +229,24 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         sslOn = state != null && state.Completed;
                     }
 
+                    if (serverName.StartsWith("www.") && serverGroup.Value.Any(a=>a.Properties.ContainsKey("www301") && (bool)a.Properties["www301"]))
+                    {
+                        sb.AppendLine("\tserver {");
+                        {
+
+                            sb.AppendLine($"\t\tlisten       {endpoint.Port};");
+                            if (sslOn)
+                            {
+                                sb.AppendLine($"\t\tlisten       {sslEndpoint.Port} ssl;");
+                            }
+
+                            sb.AppendLine($"\t\tserver_name  {serverName.Substring(4)};");
+                            sb.AppendLine($"\t\treturn 301 $scheme://{serverName}$request_uri;");
+                            sb.AppendLine();
+                        }
+                        sb.AppendLine("\t}");
+                    }
+                
 
 
                     sb.AppendLine("\tserver {");
