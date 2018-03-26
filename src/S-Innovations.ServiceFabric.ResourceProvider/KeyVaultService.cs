@@ -15,33 +15,6 @@ namespace SInnovations.ServiceFabric.ResourceProvider
 {
 
    
-    public class KeyVaultService : StatelessService, IKeyVaultService
-    {
-        private readonly IConfigurationRoot configuration;
-
-        public KeyVaultService(StatelessServiceContext serviceContext, IConfigurationRoot configuration) : base(serviceContext)
-        {
-            this.configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        }
-
-
-
-        protected override IEnumerable<ServiceInstanceListener> CreateServiceInstanceListeners()
-        {
-            return this.CreateServiceRemotingInstanceListeners();
-        }
-
-
-        public Task<string> GetSecretAsync(string key)
-        {
-            var value = configuration.GetSection("KeyVault:" + key).Value;
-            if (string.IsNullOrEmpty(value))
-            {
-                configuration.Reload();
-            }
-
-            return Task.FromResult(value);
-        }
-    }
+   
 
 }

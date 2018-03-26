@@ -1,12 +1,16 @@
-﻿using Microsoft.ServiceFabric.Actors;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Query;
 using Microsoft.ServiceFabric.Actors.Runtime;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Runtime;
+using Microsoft.ServiceFabric.Services.Runtime;
 using SInnovations.ServiceFabric.Gateway.Common.Actors;
 using SInnovations.ServiceFabric.Gateway.Common.Model;
 using SInnovations.ServiceFabric.Gateway.Model;
 using SInnovations.ServiceFabric.GatewayService.Actors;
+using SInnovations.ServiceFabric.ResourceProvider;
+using SInnovations.ServiceFabric.Storage.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Fabric;
@@ -16,6 +20,42 @@ using System.Threading.Tasks;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
+    public class KeyVaultService : StatelessService, IKeyVaultService, IAzureADTokenService
+    {
+        private readonly IConfigurationRoot configuration;
+        private readonly AzureADConfiguration azureAD;
+
+        public KeyVaultService(StatelessServiceContext serviceContext, IConfigurationRoot configuration, AzureADConfiguration azureAD) : base(serviceContext)
+        {
+            this.configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            this.azureAD = azureAD;
+        }
+
+
+
+        protected override IEnumerable<ServiceInstanceListener> CreateServiceInstanceListeners()
+        {
+            return this.CreateServiceRemotingInstanceListeners();
+        }
+
+
+        public Task<string> GetSecretAsync(string key)
+        {
+            var value = configuration.GetSection("KeyVault:" + key).Value;
+            if (string.IsNullOrEmpty(value))
+            {
+                configuration.Reload();
+            }
+
+            return Task.FromResult(value);
+        }
+
+        public Task<string> GetTokenAsync()
+        {
+            return this.azureAD.GetAccessToken();
+        }
+    }
+
     public class GatewayServiceManagerActorService : ActorService, IGatewayServiceManagerActorService
     {
         public GatewayServiceManagerActorService(

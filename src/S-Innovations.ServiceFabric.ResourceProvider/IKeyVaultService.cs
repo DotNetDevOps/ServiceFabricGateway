@@ -10,4 +10,9 @@ namespace SInnovations.ServiceFabric.ResourceProvider
         Task<string> GetSecretAsync(string key);
     }
 
+    public interface IAzureADTokenService : IService
+    {
+        Task<string> GetTokenAsync();
+    }
+
 }
