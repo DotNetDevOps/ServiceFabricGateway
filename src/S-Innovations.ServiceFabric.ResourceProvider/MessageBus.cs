@@ -108,7 +108,7 @@ namespace SInnovations.ServiceFabric.ResourceProvider
                       {
                           { "default",  new QueueDescription("earthml-default") },
                           { "EarthML.Identity",  new QueueDescription("earthml-identity") },
-                          { "EarthML.Pimeter",  new QueueDescription("earthml-pimeter") },
+                          { "EarthML.Pimetr",  new QueueDescription("earthml-pimetr") },
                           { "EarthML.Notifications", new TopicDescription("signalr") }
                       };
 

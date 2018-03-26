@@ -13,7 +13,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="2.0.2" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="2.0.1" />
     <PackageReference Include="Microsoft.ServiceFabric.Services.Remoting" Version="3.0.472" />
-    <PackageReference Include="S-Innovations.Azure.MessageProcessor.ServiceBus" Version="2.0.0-pre-2018031601" />
+    <PackageReference Include="S-Innovations.Azure.MessageProcessor.ServiceBus" Version="2.0.0-pre-2018032603" />
   </ItemGroup>
 
 </Project>
