@@ -4,11 +4,9 @@ using Microsoft.ServiceFabric.Services.Remoting.FabricTransport;
  
 namespace SInnovations.ServiceFabric.ResourceProvider
 {
-    public class MessageProcessorOptions
+    public class MessageProcessorOptions : MessageBusOptions
     {
         public int ConcurrentMessagesProcesses { get; set; }
-        public string ListenerConnectionString { get; set; }
-        public string ListenerConnectionStringKey { get; set; }
         public string QueuePath { get; set; }
       }
 

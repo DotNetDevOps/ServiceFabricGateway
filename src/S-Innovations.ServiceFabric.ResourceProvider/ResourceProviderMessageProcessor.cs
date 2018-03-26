@@ -19,6 +19,8 @@ using System.Fabric;
 using System.Collections.Generic;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Runtime;
+using Microsoft.Extensions.Options;
+using Microsoft.Rest;
 
 namespace SInnovations.ServiceFabric.ResourceProvider
 {
@@ -107,33 +109,28 @@ namespace SInnovations.ServiceFabric.ResourceProvider
     {
         private readonly ILoggerFactory loggerFactory;
         private readonly MessageProcessorOptions options;
-        private readonly IKeyVaultService keyVaultService;
+        private readonly IAzureADTokenService keyVaultService;
         private readonly IServiceScopeFactory serviceScopeFactory;
         private readonly ILogger logger;
         private IMessageProcessorClient _processor;
 
         public ResourceProviderMessageProcessorHostedService(
+            IOptions<MessageProcessorOptions> options,
              IServiceScopeFactory serviceScopeFactory,
             ILoggerFactory loggerFactory,
-            MessageProcessorOptions options,
-            IKeyVaultService keyVaultService 
+            IAzureADTokenService keyVaultService 
            )
         {
             this.loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-            this.options = options ?? throw new ArgumentNullException(nameof(options));
+            this.options = options?.Value ?? throw new ArgumentNullException(nameof(options));
             this.keyVaultService = keyVaultService ?? throw new ArgumentNullException(nameof(keyVaultService));
             this.serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             this.logger = loggerFactory.CreateLogger<ResourceProviderMessageProcessorHostedService>();
         }
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            options.ListenerConnectionString = options.ListenerConnectionString ??
-                await keyVaultService.GetSecretAsync(options.ListenerConnectionStringKey);
-
-            if (string.IsNullOrEmpty(options.ListenerConnectionString))
-                throw new Exception("Missing connection string");
-
-            _processor = CreateProcessor();
+         
+            _processor = await CreateProcessor();
             try
             {
                 await _processor.StartProcessorAsync();
@@ -149,8 +146,14 @@ namespace SInnovations.ServiceFabric.ResourceProvider
             await _processor.StopProcessorAsync();
         }
 
-        private IMessageProcessorClient CreateProcessor()
+        private async Task<IMessageProcessorClient> CreateProcessor()
         {
+
+            var client = new Microsoft.Azure.Management.ServiceBus.ServiceBusManagementClient(new TokenCredentials(await keyVaultService.GetTokenAsync()));
+            client.SubscriptionId = options.SubscriptionId.ToString();
+
+
+            var conn = await client.Namespaces.ListKeysWithHttpMessagesAsync(options.ResourceGroup, options.Namespace, options.AuthorizationRuleName);
 
 
             return new MessageProcessorClient<Message>(
@@ -160,7 +163,7 @@ namespace SInnovations.ServiceFabric.ResourceProvider
                      Provider = new ServiceBusMessageProcessorProvider(loggerFactory,
                      new ServiceBusMessageProcessorProviderOptions
                      {
-                         ConnectionString = options.ListenerConnectionString,
+                         ConnectionString =conn.Body.PrimaryConnectionString,
                          MaxConcurrentProcesses = options.ConcurrentMessagesProcesses, //High IO depended message processing for relocation of data and reordering.
                          MaxMessageRetries = 3,
                          QueueDescription = new QueueDescription(options.QueuePath),

@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.Rest;
 using Microsoft.ServiceFabric.Services.Remoting;
 using Microsoft.ServiceFabric.Services.Remoting.FabricTransport;
 using SInnovations.Azure.MessageProcessor.Core;
@@ -55,17 +57,25 @@ namespace SInnovations.ServiceFabric.ResourceProvider
         }
     }
 
+    public class MessageBusOptions
+    {
+        public Guid SubscriptionId { get; set; }
+        public string ResourceGroup { get; set; }
+        public string Namespace { get; set; }
+        public string AuthorizationRuleName { get; set; } = "RootManageSharedAccessKey";
+    }
     public class MessageBus : IMessageBus, IDisposable
     {
         private readonly AsyncLazy<ServiceBusMessageProcessorClientProvider> bus;
-        private readonly IKeyVaultService keyVaultService;
+        private readonly MessageBusOptions options;
+        private readonly IAzureADTokenService keyVaultService;
         private readonly ILoggerFactory loggerFactory;
         private readonly IMessageBusCorrelationFactory[] correlations;
         private readonly ActionBlock<ProviderMessage> _pipeline;
 
-        public MessageBus(IKeyVaultService keyVaultService ,ILoggerFactory loggerFactory, IMessageBusCorrelationFactory[] correlations)
+        public MessageBus(IOptions<MessageBusOptions> options, IAzureADTokenService keyVaultService ,ILoggerFactory loggerFactory, IMessageBusCorrelationFactory[] correlations)
         {
-
+            this.options = options?.Value ?? throw new ArgumentNullException(nameof(options));
             this.keyVaultService = keyVaultService ?? throw new ArgumentNullException(nameof(keyVaultService));
             this.loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             this.correlations = correlations ?? throw new ArgumentNullException(nameof(correlations));
@@ -85,13 +95,21 @@ namespace SInnovations.ServiceFabric.ResourceProvider
         }
    
 
-        private async Task<ServiceBusMessageProcessorClientProvider> Factory() { 
+        private async Task<ServiceBusMessageProcessorClientProvider> Factory() {
 
-          var correlationsMap = new Dictionary<string, EntityDescription>
+
+            var client = new Microsoft.Azure.Management.ServiceBus.ServiceBusManagementClient(new TokenCredentials(await keyVaultService.GetTokenAsync()));
+            client.SubscriptionId = options.SubscriptionId.ToString();
+
+
+            var conn = await client.Namespaces.ListKeysWithHttpMessagesAsync(options.ResourceGroup,options.Namespace,options.AuthorizationRuleName);
+
+            var correlationsMap = new Dictionary<string, EntityDescription>
                       {
                           { "default",  new QueueDescription("earthml-default") },
                           { "EarthML.Identity",  new QueueDescription("earthml-identity") },
-                          { "EarthML.Pimeter",  new QueueDescription("earthml-pimeter") }
+                          { "EarthML.Pimeter",  new QueueDescription("earthml-pimeter") },
+                          { "EarthML.Notifications", new TopicDescription("signalr") }
                       };
 
             foreach (var correlation in correlations)
@@ -103,7 +121,7 @@ namespace SInnovations.ServiceFabric.ResourceProvider
             return  new ServiceBusMessageProcessorProvider(loggerFactory,
                 new ServiceBusMessageProcessorProviderOptions
                 {
-                    ConnectionString = await keyVaultService.GetSecretAsync("PimetrServiceBus"),
+                    ConnectionString = conn.Body.PrimaryConnectionString,
                     TopicScaleCount = 2,
                     TopicDescription = new TopicDescription("earthml-documents"),
                     SubscriptionDescription = new SubscriptionDescription("earthml-documents", "sub"),
