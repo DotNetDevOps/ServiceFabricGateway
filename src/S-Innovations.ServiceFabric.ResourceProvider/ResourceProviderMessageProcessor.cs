@@ -55,7 +55,16 @@ namespace SInnovations.ServiceFabric.ResourceProvider
        
         protected override async Task RunAsync(CancellationToken cancellationToken)
         {
-            await hostedService.StartAsync(cancellationToken);
+            try
+            {
+                await hostedService.StartAsync(cancellationToken);
+
+            } catch(Exception ex)
+            {
+                await Task.Delay(60000);
+
+                throw;
+            }
 
             await base.RunAsync(cancellationToken);
         }

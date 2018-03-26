@@ -89,7 +89,7 @@ namespace SInnovations.ServiceFabric.Storage.Configuration
         public async Task<string> GetAccessToken()
         {
 
-
+           
             var section = _config.Settings.Sections["AzureResourceManager"].Parameters;
 
             var ctx = new AuthenticationContext($"https://login.microsoftonline.com/{section["TenantId"].Value}", _cache);
