@@ -32,13 +32,12 @@
     <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.0.2" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
     <PackageReference Include="Polly" Version="5.8.0" />
-    <PackageReference Include="S-Innovations.Unity.AspNetCore2" Version="1.0.0-pre-2018031402" />
+    <PackageReference Include="S-Innovations.Unity.AspNetCore2" Version="1.0.0-pre-2018033001" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="2.0.2" />
     <PackageReference Include="Serilog.Sinks.ApplicationInsights" Version="2.5.1" />
-    <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="1.0.0-pre-2018031402"></PackageReference>
+    <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="1.0.0-pre-2018033001"></PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.HttpOverrides" Version="2.0.2" />
     <PackageReference Include="System.Threading.Tasks" Version="4.3.0" />
-    <PackageReference Include="Unity.Microsoft.DependencyInjection" Version="2.0.9" />
   </ItemGroup>
 
   <ItemGroup>

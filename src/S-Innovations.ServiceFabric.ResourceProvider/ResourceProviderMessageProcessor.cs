@@ -119,12 +119,14 @@ namespace SInnovations.ServiceFabric.ResourceProvider
         private readonly ILoggerFactory loggerFactory;
         private readonly MessageProcessorOptions options;
         private readonly IAzureADTokenService keyVaultService;
+        private readonly MessageBusOptions busOptions;
         private readonly IServiceScopeFactory serviceScopeFactory;
         private readonly ILogger logger;
         private IMessageProcessorClient _processor;
 
         public ResourceProviderMessageProcessorHostedService(
             IOptions<MessageProcessorOptions> options,
+            IOptions<MessageBusOptions> busOptions,
              IServiceScopeFactory serviceScopeFactory,
             ILoggerFactory loggerFactory,
             IAzureADTokenService keyVaultService 
@@ -133,6 +135,7 @@ namespace SInnovations.ServiceFabric.ResourceProvider
             this.loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             this.options = options?.Value ?? throw new ArgumentNullException(nameof(options));
             this.keyVaultService = keyVaultService ?? throw new ArgumentNullException(nameof(keyVaultService));
+            this.busOptions = busOptions?.Value ?? throw new ArgumentNullException(nameof(busOptions));
             this.serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             this.logger = loggerFactory.CreateLogger<ResourceProviderMessageProcessorHostedService>();
         }
@@ -159,10 +162,10 @@ namespace SInnovations.ServiceFabric.ResourceProvider
         {
 
             var client = new Microsoft.Azure.Management.ServiceBus.ServiceBusManagementClient(new TokenCredentials(await keyVaultService.GetTokenAsync()));
-            client.SubscriptionId = options.SubscriptionId.ToString();
+            client.SubscriptionId = busOptions.SubscriptionId.ToString();
 
 
-            var conn = await client.Namespaces.ListKeysWithHttpMessagesAsync(options.ResourceGroup, options.Namespace, options.AuthorizationRuleName);
+            var conn = await client.Namespaces.ListKeysWithHttpMessagesAsync(busOptions.ResourceGroup, busOptions.Namespace, busOptions.AuthorizationRuleName);
 
 
             return new MessageProcessorClient<Message>(
