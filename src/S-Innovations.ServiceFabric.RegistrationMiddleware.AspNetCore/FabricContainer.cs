@@ -1,14 +1,10 @@
 ﻿using Unity;
 using SInnovations.ServiceFabric.Unity;
 using SInnovations.Unity.AspNetCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 #if NETCORE20
 using Unity.Microsoft.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection;
+
 #endif
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore
@@ -16,19 +12,17 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore
     public class FabricContainer : UnityContainer, IServiceScopeInitializer
     {
 
-#if NETCORE20
-        private readonly ServiceProviderFactory fac;
+ 
 
-#endif
-
-        public FabricContainer()
+        public FabricContainer(ServiceCollection services =null)
         {
-            
+            services = services ?? new ServiceCollection();
+
             this.RegisterInstance<IServiceScopeInitializer>(this);
 
 #if NETCORE20
-            fac = new ServiceProviderFactory(this);
-            this.AsFabricContainer();
+
+            this.AsFabricContainer().BuildServiceProvider(services) ;
 #else
             this.AsFabricContainer().WithAspNetCoreServiceProvider();
 #endif
@@ -39,12 +33,15 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore
         {
 #if NETCORE20
 
-
-            var child= fac.CreateBuilder(new ServiceCollection());
-
-            fac.CreateServiceProvider(child);
-
+            var child = container.CreateChildContainer();
+            new ServiceCollection().BuildServiceProvider(child);
             return child;
+
+          //  var child= fac.CreateBuilder();
+
+         //   fac.CreateServiceProvider(child);
+
+        //    return child;
 #else
             return container.WithAspNetCoreServiceProvider();
 #endif
