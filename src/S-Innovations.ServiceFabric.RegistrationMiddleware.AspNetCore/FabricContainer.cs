@@ -33,6 +33,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore
             this.AsFabricContainer().WithAspNetCoreServiceProvider();
 #endif
 
+            this.AddNewExtension<EnumerableExtension>();
         }
         public IUnityContainer InitializeScope(IUnityContainer container)
         {
