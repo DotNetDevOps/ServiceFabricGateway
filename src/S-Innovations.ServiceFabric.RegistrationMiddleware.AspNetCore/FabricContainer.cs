@@ -9,6 +9,8 @@ using Unity.Microsoft.DependencyInjection;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore
 {
+
+
     public class FabricContainer : UnityContainer, IServiceScopeInitializer
     {
 
@@ -27,7 +29,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore
             this.AsFabricContainer().WithAspNetCoreServiceProvider();
 #endif
 
-            this.AddNewExtension<EnumerableExtension>();
+          
         }
         public IUnityContainer InitializeScope(IUnityContainer container)
         {
