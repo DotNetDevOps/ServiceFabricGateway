@@ -358,7 +358,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                                 url = "http://" + upstreamName;
 
                                 WriteProxyPassLocation(2, a.ReverseProxyLocation, url, sb,
-                                    $"\"{a.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{a.ServiceVersion}\"", upstreamName, a.CacheOptions);
+                                    $"\"{a.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{a.ServiceVersion}\"", upstreamName, a);
                             }
                         }
 
@@ -401,7 +401,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         }
 
-        private static void WriteProxyPassLocation(int level, string location, string url, StringBuilder sb, string uniquekey, string upstreamName, ProxyPassCacheOptions cacheOptions)
+        private static void WriteProxyPassLocation(int level, string location, string url, StringBuilder sb, string uniquekey, string upstreamName, GatewayServiceRegistrationData   gatewayServiceRegistrationData)
         {
 
             var tabs = string.Join("", Enumerable.Range(0, level + 1).Select(r => "\t"));
@@ -422,14 +422,17 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 }
                 else
                 {
-
+                    if(gatewayServiceRegistrationData?.Properties.ContainsKey("nginx-rewrite")?? false)
+                    {
+                        sb.AppendLine($"{tabs}rewrite {gatewayServiceRegistrationData?.Properties["nginx-rewrite"]} break;");
+                    }
                     sb.AppendLine($"{tabs}proxy_pass {url.TrimEnd('/')}/;");
 
 
 
                 }
 
-                if (cacheOptions?.Enabled ?? false)
+                if (gatewayServiceRegistrationData?.CacheOptions?.Enabled ?? false)
                 {
                     sb.AppendLine($"{tabs}proxy_cache {upstreamName};");
 
