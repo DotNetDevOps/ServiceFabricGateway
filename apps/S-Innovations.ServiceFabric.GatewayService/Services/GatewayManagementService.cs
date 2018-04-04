@@ -107,6 +107,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         //  private readonly CloudFlareZoneService cloudFlareZoneService;
         private readonly StorageConfiguration storage;
+        private readonly FabricClient fabricClient;
         private readonly LetsEncryptService<AcmeContext> letsEncrypt;
         private readonly IAcmeClientService<AcmeContext> acmeClientService;
         private readonly ILogger logger;
@@ -116,6 +117,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         public GatewayManagementService(
             StatefulServiceContext context,
             StorageConfiguration storage,
+            FabricClient fabricClient,
             LetsEncryptService<AcmeContext> letsEncrypt,
             IAcmeClientService<AcmeContext> acmeClientService,
             ILoggerFactory loggerFactory)
@@ -123,6 +125,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         {
 
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
+            this.fabricClient = fabricClient ?? throw new ArgumentNullException(nameof(fabricClient));
             this.letsEncrypt = letsEncrypt ?? throw new ArgumentNullException(nameof(letsEncrypt));
             this.acmeClientService = acmeClientService ?? throw new ArgumentNullException(nameof(acmeClientService));
 
@@ -253,6 +256,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     logger.LogInformation("Completing the certificate generation for {hostname}", hostname);
                     await certs.SetAsync(tx, hostname, certInfo.Complete());
                     await tx.CommitAsync();
+                    _lastUpdated = DateTimeOffset.UtcNow;
                 }
             }
             logger.LogInformation("End to create certificate for {hostname}", hostname);
@@ -283,6 +287,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 {
                     await certs.SetAsync(tx, hostname, certInfo.Complete(), GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
                     await tx.CommitAsync();
+                    _lastUpdated = DateTimeOffset.UtcNow;
                 }
             }
             catch (Exception ex)
@@ -549,6 +554,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                                 {
                                     await certs.SetAsync(tx, hostname, certInfo.Complete());
                                     await tx.CommitAsync();
+                                    _lastUpdated = DateTimeOffset.UtcNow;
                                 }
                             }
                         }
@@ -721,6 +727,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             if (data.Key.EndsWith(data.IPAddressOrFQDN))
                 data.Key = data.Key.Substring(0, data.Key.Length - 1 - data.IPAddressOrFQDN.Length);
 
+
+
             logger.LogInformation("Begin Registering gateway service {key} {@gatewaydata}", data.Key, data);
             try
             {
@@ -749,6 +757,32 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
 
                 }
+
+                try
+                {
+                    var notifications = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, long>>("ServiceNotifications");
+                    using (var tx = this.StateManager.CreateTransaction())
+                    {
+                        await notifications.GetOrAddAsync(tx, data.ServerName, (serviceName) =>
+                          {
+                              logger.LogInformation("Registering notification filter for {serviceName}",serviceName);
+                              var filterDescription = new ServiceNotificationFilterDescription
+                              {
+                                  Name = data.ServiceName // new Uri("fabric:"),
+                                                          // MatchNamePrefix = true,
+                                                          // MatchPrimaryChangeOnly = true
+                          };
+
+                              fabricClient.ServiceManager.ServiceNotificationFilterMatched += (s, e) => OnNotification(e);
+
+                              return fabricClient.ServiceManager.RegisterServiceNotificationFilterAsync(filterDescription).GetAwaiter().GetResult();
+                          });
+                    }
+                }catch(Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to register notification in Registering gateway service {key}", data.Key);
+                }
+              //  fabric.ServiceManager.ServiceNotificationFilterMatched += ServiceManager_ServiceNotificationFilterMatched;
             }
             catch (Exception ex)
             {
@@ -757,7 +791,53 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             }
             logger.LogInformation("End Registering gateway service {key}", data.Key);
         }
+        private async void OnNotification(EventArgs e)
+        {
+           // var fabricClient = new FabricClient();
+           // fabricClient.ServiceManager.GetServiceDescriptionAsync(new Uri("")).Result.
+           //  fabricClient.QueryManager.GetServiceListAsync(new Uri(""),new Uri("")).Result.First().
+            var castedEventArgs = (FabricClient.ServiceManagementClient.ServiceNotificationEventArgs)e;
 
+            logger.LogInformation("ServiceNotificationEventArgs was triggered for {@notification}",castedEventArgs.Notification);
+
+           // fabricClient.QueryManager.getin(new Uri("")).Result.First().
+
+            var notification = castedEventArgs.Notification;
+            //castedEventArgs.Notification.Endpoints.First();
+
+            var gateways = await GetGatewayServicesAsync(CancellationToken.None);
+            var filtered = gateways.Where(p => p.ServiceName == notification.ServiceName);
+            var proxies = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, GatewayServiceRegistrationData>>(STATE_PROXY_DATA_NAME);
+
+            foreach (var data in filtered)
+            {
+                logger.LogInformation("Looking for {service} with endpoint {endpoint} in {@endpoints}" ,data.ServiceName,data.BackendPath,notification.Endpoints);
+
+                if (!notification.Endpoints.Any(en=>en.Address == data.BackendPath))
+                {
+                    using (var tx = this.StateManager.CreateTransaction())
+                    {
+                        logger.LogInformation("Cleaning out {gateway}", $"{data.Key}-{data.IPAddressOrFQDN}");
+                        var cleaned=await proxies.TryRemoveAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
+                        if (cleaned.HasValue)
+                        {
+                            logger.LogInformation("Cleaned out {@gateway}", cleaned.Value);
+                            _lastUpdated = DateTimeOffset.UtcNow;
+                        }
+                        await tx.CommitAsync();
+
+
+                    }
+                }
+            }
+
+
+
+                //Console.WriteLine(
+                //    "[{0}] received notification for service '{1}'",
+                //    DateTime.UtcNow,
+                //    notification.ServiceName);
+        }
         public async Task RequestCertificateAsync(string hostname, SslOptions options, bool force)
         {
             logger.LogInformation("Begin request for {hostname} certificate with {@ssl_options}. Force={force}", hostname, options, force);
@@ -868,15 +948,17 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
             return list.ToArray();
         }
-
-        public async Task<DateTimeOffset?> GetLastUpdatedAsync(CancellationToken token)
+        private DateTimeOffset _lastUpdated = DateTimeOffset.MinValue;
+        public Task<DateTimeOffset> GetLastUpdatedAsync(CancellationToken token)
         {
-            var lastupdated = DateTimeOffset.MinValue;
+            return Task.FromResult(_lastUpdated);
+            //var lastupdated = DateTimeOffset.MinValue;
 
-            var certs = await GetGatewayCertificatesAsync(token);
-            var proxies = await GetGatewayServicesAsync(token);
+            //var certs = await GetGatewayCertificatesAsync(token);
+            //var proxies = await GetGatewayServicesAsync(token);
 
-            return certs.Select(c => c.RunAt.GetValueOrDefault()).Concat(proxies.Select(p => p.Time)).DefaultIfEmpty().Max();
+            //var a= certs.Select(c => c.RunAt.GetValueOrDefault()).Concat(proxies.Select(p => p.Time)).DefaultIfEmpty().Max();
+            //return a > _lastUpdated ? a : _lastUpdated;
 
         }
 

@@ -192,6 +192,9 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 var codePackage = this.Context.CodePackageActivationContext.CodePackageName;
                 var codePath = this.Context.CodePackageActivationContext.GetCodePackageObject(codePackage).Path;
 
+
+
+
                 foreach (var upstreams in proxies.GroupBy(k => k.ServiceName))
                 {
                    
@@ -812,7 +815,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 partitions.Select(partition => 
                 ServiceProxy.Create<IGatewayManagementService>(actorServiceUri, new ServicePartitionKey(partition)).GetLastUpdatedAsync(token)));
 
-            return updated.DefaultIfEmpty().Max(v=>v.GetValueOrDefault());
+            return updated.DefaultIfEmpty().Max(v=>v);
             
            
         }

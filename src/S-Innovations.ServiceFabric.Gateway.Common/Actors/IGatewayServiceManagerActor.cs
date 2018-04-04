@@ -29,7 +29,7 @@ namespace SInnovations.ServiceFabric.Gateway.Actors
         Task RequestCertificateAsync(string hostname, SslOptions options, bool force );
         Task<CertGenerationState> GetCertGenerationInfoAsync(string hostname, CancellationToken token);
         Task<GatewayServiceRegistrationData[]> GetGatewayServicesAsync(CancellationToken cancellationToken);
-        Task<DateTimeOffset?> GetLastUpdatedAsync(CancellationToken token);
+        Task<DateTimeOffset> GetLastUpdatedAsync(CancellationToken token);
         Task<string> GetChallengeResponseAsync(string hostname,CancellationToken requestAborted);
         Task SetupStorageServiceAsync(int instanceCount);
     }
