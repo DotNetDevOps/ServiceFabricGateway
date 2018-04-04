@@ -2,15 +2,34 @@
 using System.Collections.Generic;
 using System.Fabric;
 using System.Linq;
+using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
+using Newtonsoft.Json.Linq;
 
 namespace SInnovations.ServiceFabric.Storage.Configuration
 {
-    public class AzureADConfiguration
+    //public interface IAzureAd
+    //{
+    //    Task<string> GetAccessToken();
+    //    Task<string> GetTokenFromClientSecret(string authority, string resource);
+    //}
+    //public class MSIAzureAdConfiguration : IAzureAd
+    //{
+    //    public Task<string> GetAccessToken()
+    //    {
+         
+    //    }
+
+    //    public Task<string> GetTokenFromClientSecret(string authority, string resource)
+    //    {
+    //        throw new NotImplementedException();
+    //    }
+    //}
+    public class AzureADConfiguration 
     {
         private readonly TokenCache _cache;
         private readonly ConfigurationPackage _config;
@@ -75,6 +94,15 @@ namespace SInnovations.ServiceFabric.Storage.Configuration
         //   public ClientCredential AzureADServiceCredentials { get; set; }
         public async Task<string> GetTokenFromClientSecret(string authority, string resource)
         {
+            if (UseMSI)
+            {
+                var section = _config.Settings.Sections["AzureResourceManager"].Parameters;
+                var http = new HttpClient();
+                var tokenresponse = await http.GetStringAsync($"http://localhost:{section["AzureADMSIPort"].Value}/oauth2/token?resource={resource}");
+                return JToken.Parse(tokenresponse).SelectToken("$.access_token").ToString();
+
+            }
+
             var authContext = new AuthenticationContext(authority);
             var result = await authContext.AcquireTokenAsync(resource, this.CreateSecureCredentials());
             return result.AccessToken;
@@ -88,9 +116,17 @@ namespace SInnovations.ServiceFabric.Storage.Configuration
         }
         public async Task<string> GetAccessToken()
         {
-
-           
             var section = _config.Settings.Sections["AzureResourceManager"].Parameters;
+
+            if (UseMSI)
+            {
+                var http = new HttpClient();
+                var tokenresponse = await http.GetStringAsync($"http://localhost:{section["AzureADMSIPort"].Value}/oauth2/token?resource=https://management.azure.com");
+                return JToken.Parse(tokenresponse).SelectToken("$.access_token").ToString();
+
+            }
+           
+          
 
             var ctx = new AuthenticationContext($"https://login.microsoftonline.com/{section["TenantId"].Value}", _cache);
 
@@ -99,6 +135,8 @@ namespace SInnovations.ServiceFabric.Storage.Configuration
             return token.AccessToken;
 
         }
+
+        public bool UseMSI => string.IsNullOrEmpty(_config?.Settings?.Sections["AzureResourceManager"]?.Parameters["AzureADServicePrincipal"]?.Value);
 
 
     }

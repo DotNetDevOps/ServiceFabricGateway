@@ -250,12 +250,13 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                             
                                
                                 builder.ConfigureLogging((hostingContext, logging) =>
-                                {                                   
-                                   
-                                   // logging.AddProvider(Container.Resolve<SerilogLoggerProvider>());
+                                {
+                                  
+                                    logging.AddProvider(Container.Resolve<SerilogLoggerProvider>());
                                     logging.AddFilter("System", LogLevel.Warning);
                                     logging.AddFilter("Microsoft", LogLevel.Warning);
                                     logging.AddFilter("Microsoft.AspNetCore.Authentication", LogLevel.Information);
+                                  
                           
                                 });
                             }

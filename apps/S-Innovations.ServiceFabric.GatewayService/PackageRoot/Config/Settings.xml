@@ -10,6 +10,7 @@
   <!-- Add your custom configuration sections and parameters here -->
   <Section Name="AzureResourceManager">
     <Parameter Name="AzureADServicePrincipal" IsEncrypted="true" MustOverride="true" Value="" />
+    <Parameter Name="AzureADMSIPort" Value="50342"/>
     <Parameter Name="TenantId"  MustOverride="true" Value="" />
     <Parameter Name="ApplicationStorageAccountId"  MustOverride="true" Value="" />
     <Parameter Name="Azure.KeyVault.Uri" MustOverride="true" Value=""/>
