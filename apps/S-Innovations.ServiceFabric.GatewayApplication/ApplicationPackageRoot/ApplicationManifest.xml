@@ -6,7 +6,6 @@
     <Parameter Name="TenantId" DefaultValue="" />
     <Parameter Name="ApplicationStorageAccountId" DefaultValue="" />
     <Parameter Name="AzureResourceManagerCertThumbrint" DefaultValue="" />
-    <Parameter Name="AzureADMSIPort" DefaultValue="50342" />
     <Parameter Name="Azure.KeyVault.Uri" DefaultValue="" />
     <Parameter Name="ASPNETCORE_ENVIRONMENT" DefaultValue="Development" />
     <Parameter Name="GatewayServerName" DefaultValue="earthml.com" />
@@ -25,7 +24,6 @@
         <Settings>
           <Section Name="AzureResourceManager">
             <Parameter Name="AzureADServicePrincipal" Value="[AzureADServicePrincipal]" IsEncrypted="true" />
-            <Parameter Name="AzureADMSIPort" Value="[AzureADMSIPort]" />
             <Parameter Name="TenantId" Value="[TenantId]" />
             <Parameter Name="ApplicationStorageAccountId" Value="[ApplicationStorageAccountId]" />
             <Parameter Name="Azure.KeyVault.Uri" Value="[Azure.KeyVault.Uri]" />

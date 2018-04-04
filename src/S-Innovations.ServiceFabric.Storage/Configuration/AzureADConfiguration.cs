@@ -102,7 +102,7 @@ namespace SInnovations.ServiceFabric.Storage.Configuration
             {
                 var section = _config.Settings.Sections["AzureResourceManager"].Parameters;
                 var http = new HttpClient();
-                var req = new HttpRequestMessage(HttpMethod.Get, $"http://localhost:{section["AzureADMSIPort"].Value}/oauth2/token?resource={resource}");
+                var req = new HttpRequestMessage(HttpMethod.Get, $"http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource={resource}");
                 req.Headers.TryAddWithoutValidation("Metadata", "true");
 
                 var tokenresponse = await http.SendAsync(req);
@@ -128,18 +128,19 @@ namespace SInnovations.ServiceFabric.Storage.Configuration
 
             if (UseMSI)
             {
-                logger.LogInformation("Using MSI at {host} to get token for management.azure.com", $"http://localhost:{section["AzureADMSIPort"].Value}");
+                logger.LogInformation("Using MSI at {host} to get token for management.azure.com", $"http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01");
 
 
                 var http = new HttpClient();
-                var req = new HttpRequestMessage(HttpMethod.Get,$"http://localhost:{section["AzureADMSIPort"].Value}/oauth2/token?resource=https://management.azure.com/");
+                var req = new HttpRequestMessage(HttpMethod.Get,$"http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/");
+
                 req.Headers.TryAddWithoutValidation("Metadata", "true");
 
                 var tokenresponse = await http.SendAsync(req);
 
                 if(tokenresponse.StatusCode == System.Net.HttpStatusCode.OK)
                 {
-                    logger.LogInformation("Succeded for MSI at {host} to get token for management.azure.com", $"http://localhost:{section["AzureADMSIPort"].Value}");
+                    logger.LogInformation("Succeded for MSI at {host} to get token for management.azure.com", $"http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/");
                 }
 
                 tokenresponse.EnsureSuccessStatusCode();
