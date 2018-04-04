@@ -803,7 +803,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             //Remove when upgrade cycle is done
             if (data.Key.EndsWith(data.IPAddressOrFQDN))
                 data.Key = data.Key.Substring(0, data.Key.Length - 1 - data.IPAddressOrFQDN.Length);
-
+            //Start out as ready (can be removed when all services use later version)
+            data.Ready = true;
 
 
             logger.LogInformation("Begin Registering gateway service {key} {@gatewaydata}", data.Key, data);
@@ -857,24 +858,24 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 //Clean up old nodes
 
-                //var partitions = await fabricClient.QueryManager.GetPartitionListAsync(data.ServiceName);
-                //var endpoints = new List<string>() {  };
-                //foreach(var part in partitions)
-                //{
-                //    if(part.PartitionInformation is Int64RangePartitionInformation int64RangePartitionInformation)
-                //    {
-                //        var resolver = ServicePartitionResolver.GetDefault();
+                var partitions = await fabricClient.QueryManager.GetPartitionListAsync(data.ServiceName);
+                var endpoints = new List<string>() { };
+                foreach (var part in partitions)
+                {
+                    if (part.PartitionInformation is Int64RangePartitionInformation int64RangePartitionInformation)
+                    {
+                        var resolver = ServicePartitionResolver.GetDefault();
 
-                //       var endpointsObj=await resolver.ResolveAsync(data.ServiceName, new ServicePartitionKey(int64RangePartitionInformation.LowKey),CancellationToken.None);
-
-
-                //        endpoints.AddRange(endpointsObj.Endpoints.SelectMany(en => JToken.Parse(en.Address).ToObject<EndpointsModel>().Endpoints.Values).ToArray());
+                        var endpointsObj = await resolver.ResolveAsync(data.ServiceName, new ServicePartitionKey(int64RangePartitionInformation.LowKey), CancellationToken.None);
 
 
-                //    }
-                    
-                //}
-                //logger.LogInformation(" Registering gateway service {key} found {@endpoints} on {node}", data.Key, endpoints,Context.NodeContext.NodeName);
+                        endpoints.AddRange(endpointsObj.Endpoints.SelectMany(en => JToken.Parse(en.Address).ToObject<EndpointsModel>().Endpoints.Values).ToArray());
+
+
+                    }
+
+                }
+                logger.LogInformation("Registering gateway service {key} found {@endpoints} on {node}", data.Key, endpoints, Context.NodeContext.NodeName);
                 //await ClearProxyAsync(data.ServiceName.AbsoluteUri, string.Join(",", endpoints));
 
 
