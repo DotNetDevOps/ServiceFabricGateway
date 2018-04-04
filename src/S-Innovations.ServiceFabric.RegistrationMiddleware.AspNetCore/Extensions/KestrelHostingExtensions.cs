@@ -88,6 +88,11 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
         {
             return container.WithKestrelHosting<KestrelHostingService<TStartup>, TStartup>(serviceType, options);
         }
+        public static IUnityContainer WithKestrelHosting<TStartup>(this IUnityContainer container, string serviceType, Func<IUnityContainer,KestrelHostingServiceOptions> options)
+         where TStartup : class
+        {
+            return container.WithKestrelHosting<KestrelHostingService<TStartup>, TStartup>(serviceType, options);
+        }
 
         public static IUnityContainer WithKestrelHosting<THostingService, TStartup>(this IUnityContainer container, string serviceType, KestrelHostingServiceOptions options)
           where THostingService : KestrelHostingService<TStartup>
@@ -97,6 +102,15 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
             container.WithStatelessService<THostingService>(serviceType, child => { child.RegisterInstance(options); });
             return container;
         }
+        public static IUnityContainer WithKestrelHosting<THostingService, TStartup>(this IUnityContainer container, string serviceType, Func<IUnityContainer, KestrelHostingServiceOptions> options)
+          where THostingService : KestrelHostingService<TStartup>
+          where TStartup : class
+        {
+
+            container.WithStatelessService<THostingService>(serviceType, child => { child.RegisterType<KestrelHostingServiceOptions>(new ContainerControlledLifetimeManager(),new InjectionFactory(options)); });
+            return container;
+        }
+
 
         public static IUnityContainer WithKestrelHosting(this IUnityContainer container, string serviceType, KestrelHostingServiceOptions options, Action<IWebHostBuilder> builder)
         {
