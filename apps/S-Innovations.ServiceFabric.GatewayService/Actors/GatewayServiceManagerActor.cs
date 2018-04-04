@@ -99,57 +99,70 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
             while (!cancellationToken.IsCancellationRequested)
             {
+               
+
                 using (var tx = StateManager.CreateTransaction())
                 {
-                    var itemFromQueue = await store.TryDequeueAsync(tx).ConfigureAwait(false);
-                    if (!itemFromQueue.HasValue)
+
+                    try
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
-                        continue;
-                    }
+                        await Test(tx, store, certs, certContainer, cancellationToken);
 
-                    var hostname1 = itemFromQueue.Value;
-
-                    //We will assume wildcard certs.
-
-                    var domain1 = string.Join(".", hostname1.Split('.').TakeLast(2));
-
-
-                    var certBlob = certContainer.GetBlockBlobReference($"{domain1}.crt");
-                    var fullchain = certContainer.GetBlockBlobReference($"{domain1}.fullchain.pem");
-                    var keyBlob = certContainer.GetBlockBlobReference($"{domain1}.key");
-
-
-                    var certInfoLookup = await certs.TryGetValueAsync(tx, hostname1);
-                    var certInfo = certInfoLookup.Value;
-
-
-
-                    if (certInfo.Counter < 3 &&((await Task.WhenAll(certBlob.ExistsAsync(), keyBlob.ExistsAsync(), fullchain.ExistsAsync())).Any(t => t == false) ||
-                         await CertExpiredAsync(certBlob)))
+                        await tx.CommitAsync();
+                    }catch(Exception ex)
                     {
-
-                        if (certInfo.SslOptions.UseHttp01Challenge)
-                        {
-                            await HandleHttpChallengeAsync(store,certs, hostname1, certBlob, fullchain, keyBlob, certInfo);
-
-                        }
-                        else
-                        {
-                            await HandleDnsChallengeAsync(certs,certContainer, hostname1, certBlob, fullchain, keyBlob, certInfo);
-                        }
+                        await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken).ConfigureAwait(false);
                     }
-                    else
-                    {
-                        await certs.SetAsync(tx, hostname1, certInfo.Complete());
-                    }
-
-  
-
-                    await tx.CommitAsync();
                    
                 }
             }
+        }
+        public async Task Test(ITransaction tx,IReliableQueue<string> store, IReliableDictionary<string, CertGenerationState> certs, CloudBlobContainer certContainer, CancellationToken cancellationToken)
+        {
+
+            var itemFromQueue = await store.TryDequeueAsync(tx).ConfigureAwait(false);
+            if (!itemFromQueue.HasValue)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            var hostname1 = itemFromQueue.Value;
+
+            //We will assume wildcard certs.
+
+            var domain1 = string.Join(".", hostname1.Split('.').TakeLast(2));
+
+
+            var certBlob = certContainer.GetBlockBlobReference($"{domain1}.crt");
+            var fullchain = certContainer.GetBlockBlobReference($"{domain1}.fullchain.pem");
+            var keyBlob = certContainer.GetBlockBlobReference($"{domain1}.key");
+
+
+            var certInfoLookup = await certs.TryGetValueAsync(tx, hostname1);
+            var certInfo = certInfoLookup.Value;
+
+
+
+            if (certInfo.Counter < 3 && ((await Task.WhenAll(certBlob.ExistsAsync(), keyBlob.ExistsAsync(), fullchain.ExistsAsync())).Any(t => t == false) ||
+                 await CertExpiredAsync(certBlob)))
+            {
+
+                if (certInfo.SslOptions.UseHttp01Challenge)
+                {
+                    await HandleHttpChallengeAsync(store, certs, hostname1, certBlob, fullchain, keyBlob, certInfo);
+
+                }
+                else
+                {
+                    await HandleDnsChallengeAsync(certs, certContainer, hostname1, certBlob, fullchain, keyBlob, certInfo);
+                }
+            }
+            else
+            {
+                await certs.SetAsync(tx, hostname1, certInfo.Complete());
+            }
+
         }
         public static AcmeClient client = new AcmeClient(WellKnownServers.LetsEncryptV2);
         public static ConcurrentDictionary<string, Task<AcmeAccount>> _acmeaccounts = new ConcurrentDictionary<string, Task<AcmeAccount>>();
