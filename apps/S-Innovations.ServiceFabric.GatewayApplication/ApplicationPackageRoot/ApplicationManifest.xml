@@ -11,9 +11,9 @@
     <Parameter Name="ASPNETCORE_ENVIRONMENT" DefaultValue="Development" />
     <Parameter Name="GatewayServerName" DefaultValue="earthml.com" />
     <Parameter Name="GatewayReverseProxyLocation" DefaultValue="/gateway/" />
-    <Parameter Name="GatewaySslOptions" DefaultValue="{'Enabled':false,'SignerEmail':'info@earthml.com','UseHttp01Challenge':false}" />
-    <Parameter Name="GatewayProperties" DefaultValue="{'CloudFlareZoneId':'ac1d153353eebc8508f7bb31ef1ab46c'}" />
-    <Parameter Name="APPLICATION_INSIGHTS" DefaultValue="10e77ea7-1d38-40f7-901c-ef3c2e7d48ef" />
+    <Parameter Name="GatewaySslOptions" DefaultValue="{}" />
+    <Parameter Name="GatewayProperties" DefaultValue="{}" />
+    <Parameter Name="APPLICATION_INSIGHTS" DefaultValue="" />
   </Parameters>
   <!-- Import the ServiceManifest from the ServicePackage. The ServiceManifestName and ServiceManifestVersion 
        should match the Name and Version attributes of the ServiceManifest element defined in the 

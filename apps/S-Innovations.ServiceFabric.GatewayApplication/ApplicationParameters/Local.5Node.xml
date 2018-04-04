@@ -2,6 +2,8 @@
 <Application xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Name="fabric:/S-Innovations.ServiceFabric.GatewayApplication" xmlns="http://schemas.microsoft.com/2011/01/fabric">
   <Parameters>
     <Parameter Name="GatewayService_InstanceCount" Value="1" />
+    <Parameter Name="AzureResourceManagerCertThumbrint" Value="C03BB5A6410741CDD2927B4FF88C3E67215A393B" />
+    <Parameter Name="Azure.KeyVault.Uri" Value="https://earthml-core-k3ci.vault.azure.net/" />
     <Parameter Name="AzureADServicePrincipal" Value="MIICLwYJKoZIhvcNAQcDoIICIDCCAhwCAQAxggFGMIIBQgIBADAqMBYxFDASBgNVBAMTC2VhcnRobWxjb3JlAhA3obe+pdlAqkfwNo0zai/zMA0GCSqGSIb3DQEBAQUABIIBAAzUycqLX8iJnLwGzcOQ/F3qCj+3pqOBtlDyVFLBZh7MyQVQ9CMeMSlTp2OilRZXut4eKDYGn2d8DWZDm7l5WRawdsf3w6tRbLJBo5MpLr8ukmQekJFepSgD/CbfJByPfvfQ89E6h/NRPdG5pRFGXO8RyNsYpb7kWytlAghmRZai+Ck4sydt672IDxihH1uWStXNGAe3kUob5TW5rOSxUmM9FHcoPPQ5vE67rjBLdfINroH6+CygkdhnfCMpnkdwFuOHPSSdNxCUlkqKSUXCgNhyfOi723swXf5rLI8H9l/buXJtHprNYpdNFLGSHrt3T6F+TJdxGnBJweecnaTXk+IwgcwGCSqGSIb3DQEHATAUBggqhkiG9w0DBwQIQfB3JOu4fumAgaiVXY2ITDUXS0LsF3InQMldek8co2Hy7/QKNsrT/ucPwY71wZlFIQV1TOqe27um+v5EQbLIjJGCXZ4pm+EhKJ9JewsULGFl4X831srksFzOYzuNSbKLiQz8/ug67nsz3x7vhTzr1C8H/NYTBFFggH4NcCiRJeHh8fQFTliRILC7BmAGfygngvdZqmmWbi02lbW/uNnN2xYtwCoM4MGWMd3tXDrAqS31u2M=" />
     <Parameter Name="TenantId" Value="802626c6-0f5c-4293-a8f5-198ecd481fe3" />
     <Parameter Name="ApplicationStorageAccountId" Value="/subscriptions/1626d2da-4051-4674-9d4c-57ce23d967a3/resourceGroups/earthml-core-sf/providers/Microsoft.Storage/storageAccounts/zzolch6ydbcz23" />
@@ -9,5 +11,6 @@
     <Parameter Name="GatewayReverseProxyLocation" Value="/gateway/" />
     <Parameter Name="GatewaySslOptions" Value="{'Enabled':false,'SignerEmail':'info@earthml.com','UseHttp01Challenge':false}" />
     <Parameter Name="GatewayProperties" Value="{'CloudFlareZoneId':'ac1d153353eebc8508f7bb31ef1ab46c'}" />
+    <Parameter Name="APPLICATION_INSIGHTS" Value="10e77ea7-1d38-40f7-901c-ef3c2e7d48ef" />
   </Parameters>
 </Application>

@@ -11,5 +11,6 @@
     <Parameter Name="GatewayReverseProxyLocation" Value="/gateway/" />
     <Parameter Name="GatewaySslOptions" Value="{'Enabled':false,'SignerEmail':'info@earthml.com','UseHttp01Challenge':false}" />
     <Parameter Name="GatewayProperties" Value="{'CloudFlareZoneId':'ac1d153353eebc8508f7bb31ef1ab46c'}" />
+    <Parameter Name="APPLICATION_INSIGHTS" Value="10e77ea7-1d38-40f7-901c-ef3c2e7d48ef" />
   </Parameters>
 </Application>
