@@ -212,10 +212,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         _logger.LogInformation("Adding ip_hash to upstream {upstreamName}", upstreamName);
                     }
 
+                    var hasLocalService = uniques.Any(c => c.IPAddressOrFQDN == Context.NodeContext.IPAddressOrFQDN);
 
                     foreach (var upstream in uniques)
                     {
-                        var server = $"\t\tserver {new Uri(upstream.BackendPath).Authority.Replace("localhost", "127.0.0.1")} {(upstream.IPAddressOrFQDN != Context.NodeContext.IPAddressOrFQDN && !upstreamIp_Hash ? "backup" : "")};";
+                        var server = $"\t\tserver {new Uri(upstream.BackendPath).Authority.Replace("localhost", "127.0.0.1")} {(upstream.IPAddressOrFQDN != Context.NodeContext.IPAddressOrFQDN && !upstreamIp_Hash && hasLocalService ? "backup" : "")};";
 
                         _logger.LogInformation("{upstream} : {server}",upstreamName,server.Trim());
                         sb.AppendLine(server);

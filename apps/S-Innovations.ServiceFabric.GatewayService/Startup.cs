@@ -248,7 +248,7 @@ namespace SInnovations.ServiceFabric.GatewayService
                 //    var a = context.RequestServices.GetService<NginxGatewayService>();
                 //    var routeData = context.GetRouteData();
 
-                //    await a.DeleteGatewayServiceAsync(context.GetRouteValue("key") as string,context.RequestAborted);
+                //    await a.DeleteGatewayServiceAsync(context.GetRouteValue("key") as string, context.RequestAborted);
 
                 //    context.Response.StatusCode = 204;
                 //});
