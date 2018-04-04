@@ -851,7 +851,33 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     fabricClient.ServiceManager.ServiceNotificationFilterMatched += OnNotification;
                     notificationRegistered = true;
                     logger.LogInformation("ServiceNotificationEvent registered for on {node}",Context.NodeContext.NodeName);
+
+
                 }
+
+                //Clean up old nodes
+
+                var partitions = await fabricClient.QueryManager.GetPartitionListAsync(data.ServiceName);
+                var endpoints = new List<string>();
+                foreach(var part in partitions)
+                {
+                    if(part.PartitionInformation is Int64RangePartitionInformation int64RangePartitionInformation)
+                    {
+                        var resolver = ServicePartitionResolver.GetDefault();
+
+                       var endpointsObj=await resolver.ResolveAsync(data.ServiceName, new ServicePartitionKey(int64RangePartitionInformation.LowKey),CancellationToken.None);
+
+
+                        endpoints.AddRange(endpointsObj.Endpoints.SelectMany(en => JToken.Parse(en.Address).ToObject<EndpointsModel>().Endpoints.Values).ToArray());
+
+
+                    }
+                    
+                }
+                logger.LogInformation(" Registering gateway service {key} found {@endpoints}", data.Key, endpoints);
+                await ClearProxyAsync(data.ServiceName.AbsoluteUri, string.Join(",", endpoints));
+
+
 
                 //  fabric.ServiceManager.ServiceNotificationFilterMatched += ServiceManager_ServiceNotificationFilterMatched;
             }
