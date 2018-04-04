@@ -343,10 +343,12 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                             sb.AppendLine();
                         }
 
+                        var test = new HashSet<string>();
 
                         foreach (var a in serverGroup.Value)
                         {
-                            if (a.IPAddressOrFQDN == Context.NodeContext.IPAddressOrFQDN)
+                            // if (a.IPAddressOrFQDN == Context.NodeContext.IPAddressOrFQDN)
+                            if (!test.Contains(a.ReverseProxyLocation))
                             {
                                 var upstreamName = a.ServiceName.AbsoluteUri.Split('/').Last().Replace('.', '_');
 
@@ -355,6 +357,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                                 await WriteProxyPassLocation(2, a.ReverseProxyLocation, url, sb,
                                     $"\"{a.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{a.ServiceVersion}\"", upstreamName, a);
+                                test.Add(a.ReverseProxyLocation);
                             }
                         }
 
