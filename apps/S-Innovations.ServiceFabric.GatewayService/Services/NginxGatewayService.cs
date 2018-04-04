@@ -28,6 +28,7 @@ using SInnovations.ServiceFabric.Gateway.Common.Actors;
 using Polly;
 using Polly.Retry;
 using SInnovations.ServiceFabric.GatewayService.Configuration;
+using System.Net.Http;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
@@ -348,7 +349,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                                 var url = a.BackendPath;
                                 url = "http://" + upstreamName;
 
-                                WriteProxyPassLocation(2, a.ReverseProxyLocation, url, sb,
+                                await WriteProxyPassLocation(2, a.ReverseProxyLocation, url, sb,
                                     $"\"{a.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{a.ServiceVersion}\"", upstreamName, a);
                             }
                         }
@@ -356,7 +357,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         {
                             var upstreamName = this.Context.ServiceName.AbsoluteUri.Split('/').Last().Replace('.', '_');
 
-                            WriteProxyPassLocation(2,
+                            await WriteProxyPassLocation(2,
                                 "/.well-known/acme-challenge/", "http://" + upstreamName, sb,
                                 $"\"{ this.Context.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{ this.Context.CodePackageActivationContext.GetServiceManifestVersion()}\"",
                                 upstreamName, null
@@ -443,12 +444,16 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         }
 
-        private static void WriteProxyPassLocation(int level, string location, string url, StringBuilder sb, string uniquekey, string upstreamName, GatewayServiceRegistrationData   gatewayServiceRegistrationData)
+        private static async Task WriteProxyPassLocation(int level, string location, string url, StringBuilder sb, string uniquekey, string upstreamName, GatewayServiceRegistrationData   gatewayServiceRegistrationData)
         {
 
             var tabs = string.Join("", Enumerable.Range(0, level + 1).Select(r => "\t"));
             sb.AppendLine($"{string.Join("", Enumerable.Range(0, level).Select(r => "\t"))}location {location} {{");
             {
+
+
+
+
                 // rewrite ^ /268be5f6-90b1-4aa1-9eac-2225d8f7ab29/131356467681395031/$1 break;
                 var uri = new Uri(url);
                 if (location.StartsWith("~") || location.Trim().StartsWith("/.well-known/"))
@@ -474,7 +479,24 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 }
 
-                if (gatewayServiceRegistrationData?.CacheOptions?.Enabled ?? false)
+
+                if (gatewayServiceRegistrationData?.Properties.ContainsKey("cf-real-ip") ?? false)
+                {
+                    var http = new HttpClient();
+                    var ipsv4 = await http.GetStringAsync("https://www.cloudflare.com/ips-v4");
+                    var ipsv6 = await http.GetStringAsync("https://www.cloudflare.com/ips-v6");
+                    var breaks = new[] { "\r\n", "\r", "\n" };
+                    foreach (var line in ipsv4.Split(breaks ,   StringSplitOptions.None).Concat(ipsv6.Split(breaks, StringSplitOptions.None)))
+                    {
+                        sb.AppendLine($"{tabs}set_real_ip_from  {line};");
+                    }
+                    sb.AppendLine($"{tabs}real_ip_header  CF-Connecting-IP;");
+                }
+
+
+
+
+                    if (gatewayServiceRegistrationData?.CacheOptions?.Enabled ?? false)
                 {
                     sb.AppendLine($"{tabs}proxy_cache {upstreamName};");
 
