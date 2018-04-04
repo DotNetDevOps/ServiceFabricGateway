@@ -184,7 +184,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
 
             {
-                var proxies = await GetGatewayServicesAsync(token);
+                var proxiesAll = await GetGatewayServicesAsync(token);
+                var proxies = proxiesAll.Where(p => p.Ready).ToList();
 
                 var codePackage = this.Context.CodePackageActivationContext.CodePackageName;
                 var codePath = this.Context.CodePackageActivationContext.GetCodePackageObject(codePackage).Path;

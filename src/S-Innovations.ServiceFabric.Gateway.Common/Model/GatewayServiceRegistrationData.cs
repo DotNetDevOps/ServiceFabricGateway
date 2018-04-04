@@ -16,7 +16,7 @@ namespace SInnovations.ServiceFabric.Gateway.Model
     [KnownType(typeof(string[]))]
     public class GatewayServiceRegistrationData : IExtensibleDataObject
     {
-        public string ProxyName => Key.Substring(0, Key.Length - IPAddressOrFQDN.Length - 1);
+       // public string ProxyName => Key.Substring(0, Key.Length - IPAddressOrFQDN.Length - 1);
 
         [DataMember]
         public string ReverseProxyLocation { get; set; }
@@ -49,12 +49,55 @@ namespace SInnovations.ServiceFabric.Gateway.Model
         [DataMember]
         public DateTimeOffset Time { get; private set; } = DateTimeOffset.UtcNow;
 
+        [DataMember]
+        public bool Ready { get; set; } = true;
+
         private ExtensionDataObject theData;
 
         public virtual ExtensionDataObject ExtensionData
         {
             get { return theData; }
             set { theData = value; }
+        }
+
+        public GatewayServiceRegistrationData MarkAsDead()
+        {
+            return new GatewayServiceRegistrationData
+            {
+                ReverseProxyLocation = ReverseProxyLocation,
+                BackendPath = BackendPath,
+                CacheOptions = CacheOptions,
+                ExtensionData = ExtensionData,
+                IPAddressOrFQDN = IPAddressOrFQDN,
+                Key = Key,
+                Properties = Properties,
+                ServerName = ServerName,
+                ServiceName = ServiceName,
+                ServiceVersion = ServiceVersion,
+                Ssl = Ssl,
+                Time = Time,
+                Ready = false
+            };
+        }
+
+        public GatewayServiceRegistrationData MarkAsReady()
+        {
+            return new GatewayServiceRegistrationData
+            {
+                ReverseProxyLocation = ReverseProxyLocation,
+                BackendPath = BackendPath,
+                CacheOptions = CacheOptions,
+                ExtensionData = ExtensionData,
+                IPAddressOrFQDN = IPAddressOrFQDN,
+                Key = Key,
+                Properties = Properties,
+                ServerName = ServerName,
+                ServiceName = ServiceName,
+                ServiceVersion = ServiceVersion,
+                Ssl = Ssl,
+                Time = DateTimeOffset.UtcNow,
+                Ready = true
+            };
         }
     }
 }

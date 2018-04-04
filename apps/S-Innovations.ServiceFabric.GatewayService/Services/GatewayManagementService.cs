@@ -249,19 +249,19 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 //var notifications = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, long>>("ServiceNotifications");
 
-                 
+
                 //using (var tx = this.StateManager.CreateTransaction())
                 //{
-                //    var enumerable = await notifications.CreateEnumerableAsync(tx,EnumerationMode.Unordered);
+                //    var enumerable = await notifications.CreateEnumerableAsync(tx, EnumerationMode.Unordered);
 
                 //    using (var e = enumerable.GetAsyncEnumerator())
                 //    {
                 //        while (await e.MoveNextAsync(cancellationToken).ConfigureAwait(false))
                 //        {
 
-                          
+
                 //            await fabricClient.ServiceManager.UnregisterServiceNotificationFilterAsync(e.Current.Value);
-                           
+
                 //        }
                 //    }
                 //}
@@ -858,7 +858,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 //Clean up old nodes
 
                 var partitions = await fabricClient.QueryManager.GetPartitionListAsync(data.ServiceName);
-                var endpoints = new List<string>();
+                var endpoints = new List<string>() { data.BackendPath };
                 foreach(var part in partitions)
                 {
                     if(part.PartitionInformation is Int64RangePartitionInformation int64RangePartitionInformation)
@@ -874,7 +874,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     }
                     
                 }
-                logger.LogInformation(" Registering gateway service {key} found {@endpoints}", data.Key, endpoints);
+                logger.LogInformation(" Registering gateway service {key} found {@endpoints} on {node}", data.Key, endpoints,Context.NodeContext.NodeName);
                 await ClearProxyAsync(data.ServiceName.AbsoluteUri, string.Join(",", endpoints));
 
 
@@ -911,6 +911,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                         return fabricClient.ServiceManager.RegisterServiceNotificationFilterAsync(filterDescription).GetAwaiter().GetResult();
                     });
+
+                    await tx.CommitAsync();
                 }
            
         }
@@ -941,19 +943,52 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         {
                             if (await proxies.ContainsKeyAsync(tx,$"{data.Key}-{data.IPAddressOrFQDN}"))
                             {
-                                logger.LogInformation("Cleaning out {gateway}", $"{data.Key}-{data.IPAddressOrFQDN}");
+                            
 
-                                var cleaned = await proxies.TryRemoveAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
-                                if (cleaned.HasValue)
+                                if (DateTimeOffset.UtcNow.Subtract(data.Time) > TimeSpan.FromMinutes(10))
                                 {
-                                    logger.LogInformation("Cleaned out {@gateway}", cleaned.Value);
-                                    _lastUpdated = DateTimeOffset.UtcNow;
-                                    await tx.CommitAsync();
+                                    logger.LogInformation("Cleaning out {gateway}", $"{data.Key}-{data.IPAddressOrFQDN}");
+
+                                    var cleaned = await proxies.TryRemoveAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
+                                    if (cleaned.HasValue)
+                                    {
+                                        logger.LogInformation("Cleaned out {@gateway}", cleaned.Value);
+                                        _lastUpdated = DateTimeOffset.UtcNow;
+                                     
+                                    }
                                 }
+                                else
+                                {
+                                    logger.LogInformation("marked {@gateway} as dead", $"{data.Key}-{data.IPAddressOrFQDN}");
+                                    await proxies.TryUpdateAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", data.MarkAsDead(), data);
+                                }
+                                await tx.CommitAsync();
+
                             }
                             else
                             {
                                 logger.LogInformation("{gateway} was already removed", $"{data.Key}-{data.IPAddressOrFQDN}");
+                            }
+
+
+
+                        }
+                    }
+                    else if(!data.Ready)
+                    {
+                        using (var tx = this.StateManager.CreateTransaction())
+                        {
+                            if (await proxies.ContainsKeyAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}"))
+                            {
+                                logger.LogInformation("marking {gateway} as ready", $"{data.Key}-{data.IPAddressOrFQDN}");
+
+                                await proxies.TryUpdateAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", data.MarkAsReady(), data);
+                                await tx.CommitAsync();
+                                _lastUpdated = DateTimeOffset.UtcNow;
+                            }
+                            else
+                            {
+                                logger.LogInformation("{gateway} did not exists", $"{data.Key}-{data.IPAddressOrFQDN}");
                             }
 
 
