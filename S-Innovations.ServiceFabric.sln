@@ -46,7 +46,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "S-Innovations.ServiceFabric
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ResourceProvider", "ResourceProvider", "{4A2396CF-FF2F-4902-AA32-F0588FA59AE3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "S-Innovations.ServiceFabric.ResourceProvider", "src\S-Innovations.ServiceFabric.ResourceProvider\S-Innovations.ServiceFabric.ResourceProvider.csproj", "{F09903F2-0558-4287-9205-1DF4EA5444CC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "S-Innovations.ServiceFabric.ResourceProvider", "src\S-Innovations.ServiceFabric.ResourceProvider\S-Innovations.ServiceFabric.ResourceProvider.csproj", "{F09903F2-0558-4287-9205-1DF4EA5444CC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

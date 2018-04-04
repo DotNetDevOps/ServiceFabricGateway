@@ -73,6 +73,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                             SignerEmail = "info@earthml.com",
                        //     UseHttp01Challenge = true
                        },
+                        Properties = new Dictionary<string, object> { {"CloudFlareZoneId", "ac1d153353eebc8508f7bb31ef1ab46c" } }
                     }
                 }
 
@@ -375,19 +376,21 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         private async Task<bool> SetupSsl(StringBuilder sb, KeyValuePair<string, List<GatewayServiceRegistrationData>> serverGroup, string serverName, CancellationToken token)
         {
             var certs = storageAccount.CreateCloudBlobClient().GetContainerReference("certs");
-
-            var certBlob = certs.GetBlockBlobReference($"{serverName}.crt");
-            var keyBlob = certs.GetBlockBlobReference($"{serverName}.key");
-            var chainBlob = certs.GetBlockBlobReference($"{serverName}.fullchain.pem");
+            var domain1 = string.Join(".", serverName.Split('.').TakeLast(2));
+           // var certBlob = certs.GetBlockBlobReference($"{domain1}.crt");
+            var keyBlob = certs.GetBlockBlobReference($"{domain1}.key");
+            var chainBlob = certs.GetBlockBlobReference($"{domain1}.fullchain.pem");
 
             Directory.CreateDirectory(Path.Combine(Context.CodePackageActivationContext.WorkDirectory, "letsencrypt"));
 
-            await keyBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{serverName}.key", FileMode.Create);
+          
 
-            if (await chainBlob.ExistsAsync())
+            if (await chainBlob.ExistsAsync() && await keyBlob.ExistsAsync())
             {
-                await chainBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{serverName}.fullchain.pem", FileMode.Create);
-                sb.AppendLine($"\t\tssl_certificate {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{serverName}.fullchain.pem;");
+                await keyBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{domain1}.key", FileMode.Create);
+
+                await chainBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{domain1}.fullchain.pem", FileMode.Create);
+                sb.AppendLine($"\t\tssl_certificate {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{domain1}.fullchain.pem;");
 
             }
             else
@@ -398,7 +401,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                
             }
 
-            sb.AppendLine($"\t\tssl_certificate_key {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{serverName}.key;");
+            sb.AppendLine($"\t\tssl_certificate_key {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{domain1}.key;");
 
             sb.AppendLine($"\t\tssl_session_timeout  5m;");
 

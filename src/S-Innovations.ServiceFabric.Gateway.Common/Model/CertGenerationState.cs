@@ -65,7 +65,8 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
                 HostName = HostName,
                 SslOptions = new SslOptions { Enabled = SslOptions.Enabled, SignerEmail = SslOptions.SignerEmail, UseHttp01Challenge = SslOptions.UseHttp01Challenge },
                 RunAt = DateTimeOffset.UtcNow,
-                HttpChallengeInfo = HttpChallengeInfo
+                HttpChallengeInfo = HttpChallengeInfo,
+                Counter=Counter
             };
         }
         [DataMember]

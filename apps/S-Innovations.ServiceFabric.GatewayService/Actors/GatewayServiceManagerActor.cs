@@ -35,20 +35,34 @@ using System.Threading;
 using Microsoft.ServiceFabric.Data;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Runtime;
+using SInnovations.LetsEncrypt.Services.Defaults;
+using SInnovations.LetsEncrypt.Stores;
 
 namespace SInnovations.ServiceFabric.GatewayService.Actors
 {
 
-  
+    public interface ServiceFabricIRS256SignerStore : IService
+    {
+        Task<bool> ExistsAsync(string dnsIdentifier);
 
-    public sealed class GatewayManagementService : StatefulService, IGatewayManagementService
+        Task<string> GetSignerAsync(string dnsIdentifier);
+        Task SetSigner(string dnsIdentifier, string cert);
+    }
+    public interface ServiceFabricIOrdersService :  IService
+    {
+        Task<string> GetRemoteLocationAsync(string topLevelDomain);
+        Task ClearOrderAsync(string topLevelDomain);
+        Task SetRemoteLocationAsync(string domain, string location);
+    }
+    public sealed class GatewayManagementService : StatefulService, 
+        IGatewayManagementService , ICloudFlareZoneService, ServiceFabricIOrdersService, ServiceFabricIRS256SignerStore
     {
         public const string STATE_LAST_UPDATED_NAME = "lastUpdated";
         public const string STATE_PROXY_DATA_NAME = "ProxyDictionary";
         public const string STATE_CERTS_DATA_NAME = "CertsDictionary";
         public const string STATE_CERTS_QUEUE_DATA_NAME = "CertsQueue";
 
-        private readonly CloudFlareZoneService cloudFlareZoneService;
+      //  private readonly CloudFlareZoneService cloudFlareZoneService;
         private readonly StorageConfiguration storage;
         private readonly LetsEncryptService<AcmeContext> letsEncrypt;
 
@@ -56,12 +70,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
         public GatewayManagementService(
             StatefulServiceContext context,
-            CloudFlareZoneService cloudFlareZoneService,
             StorageConfiguration storage,
             LetsEncryptService<AcmeContext> letsEncrypt)
             : base(context)
         {
-            this.cloudFlareZoneService = cloudFlareZoneService ?? throw new ArgumentNullException(nameof(cloudFlareZoneService));
+
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
             this.letsEncrypt = letsEncrypt ?? throw new ArgumentNullException(nameof(letsEncrypt));
         }
@@ -95,14 +108,19 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                         continue;
                     }
 
-                    var hostname = itemFromQueue.Value;
+                    var hostname1 = itemFromQueue.Value;
 
-                    var certBlob = certContainer.GetBlockBlobReference($"{hostname}.crt");
-                    var fullchain = certContainer.GetBlockBlobReference($"{hostname}.fullchain.pem");
-                    var keyBlob = certContainer.GetBlockBlobReference($"{hostname}.key");
+                    //We will assume wildcard certs.
+
+                    var domain1 = string.Join(".", hostname1.Split('.').TakeLast(2));
 
 
-                    var certInfoLookup = await certs.TryGetValueAsync(tx, hostname);
+                    var certBlob = certContainer.GetBlockBlobReference($"{domain1}.crt");
+                    var fullchain = certContainer.GetBlockBlobReference($"{domain1}.fullchain.pem");
+                    var keyBlob = certContainer.GetBlockBlobReference($"{domain1}.key");
+
+
+                    var certInfoLookup = await certs.TryGetValueAsync(tx, hostname1);
                     var certInfo = certInfoLookup.Value;
 
 
@@ -113,17 +131,17 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
                         if (certInfo.SslOptions.UseHttp01Challenge)
                         {
-                            await HandleHttpChallengeAsync(store,certs,hostname, certBlob, fullchain, keyBlob, certInfo);
+                            await HandleHttpChallengeAsync(store,certs, hostname1, certBlob, fullchain, keyBlob, certInfo);
 
                         }
                         else
                         {
-                            await HandleDnsChallengeAsync(certs,certContainer, hostname, certBlob, fullchain, keyBlob, certInfo);
+                            await HandleDnsChallengeAsync(certs,certContainer, hostname1, certBlob, fullchain, keyBlob, certInfo);
                         }
                     }
                     else
                     {
-                        await certs.SetAsync(tx, hostname, certInfo.Complete());
+                        await certs.SetAsync(tx, hostname1, certInfo.Complete());
                     }
 
   
@@ -154,7 +172,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
                 using (ITransaction tx = StateManager.CreateTransaction())
                 {
-                    await certs.SetAsync(tx, hostname, certInfo.Complete());
+                    await certs.SetAsync(tx, hostname, certInfo.Complete(),TimeSpan.FromSeconds(10),CancellationToken.None);
                     await tx.CommitAsync();
                 }
             }
@@ -162,7 +180,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
             {
                 using (ITransaction tx = StateManager.CreateTransaction())
                 {
-                    await certs.SetAsync(tx, hostname, certInfo.Increment());
+                    await certs.SetAsync(tx, hostname, certInfo.Increment(), TimeSpan.FromSeconds(10), CancellationToken.None);
                     await tx.CommitAsync();
                 }
                 await certsContainer.GetBlockBlobReference($"{hostname}.err").UploadTextAsync(ex.ToString());
@@ -380,27 +398,32 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
         public async Task RegisterGatewayServiceAsync(GatewayServiceRegistrationData data)
         {
-            if (data.Properties.ContainsKey("CloudFlareZoneId"))
+            try
             {
-                var dnsidentifiers = data.ServerName.Split(' ').Select(d => string.Join(".", d.Split('.').TakeLast(2)).ToLower()).Distinct().ToArray();
-                if (dnsidentifiers.Length == 1)
+                if (data.Properties.ContainsKey("CloudFlareZoneId"))
                 {
-                    await cloudFlareZoneService.UpdateZoneIdAsync(dnsidentifiers.First(), data.Properties["CloudFlareZoneId"] as string);
+                    var dnsidentifiers = data.ServerName.Split(' ').Select(d => string.Join(".", d.Split('.').TakeLast(2)).ToLower()).Distinct().ToArray();
+                    if (dnsidentifiers.Length == 1)
+                    {
+                        await UpdateZoneIdAsync(dnsidentifiers.First(), data.Properties["CloudFlareZoneId"] as string);
+                    }
                 }
-            }
 
-            var proxies = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, GatewayServiceRegistrationData>>(STATE_PROXY_DATA_NAME);
+                var proxies = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, GatewayServiceRegistrationData>>(STATE_PROXY_DATA_NAME);
 
 
-            using (var tx = this.StateManager.CreateTransaction())
+                using (var tx = this.StateManager.CreateTransaction())
+                {
+                    await proxies.AddOrUpdateAsync(tx, data.Key, data, (key, old) => data);
+
+                    await tx.CommitAsync();
+
+
+                }
+            }catch(Exception ex)
             {
-                await proxies.AddOrUpdateAsync(tx, data.Key, data, (key, old) => data);
-
-                await tx.CommitAsync();
-
-
+                throw;
             }
-
 
         }
 
@@ -518,6 +541,94 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
 
             throw new KeyNotFoundException();
+        }
+
+        public async Task<string> GetZoneIdAsync(string dnsIdentifier)
+        {
+            return await GetValue<string, string>(dnsIdentifier, "ZoneIds");
+        }
+
+        public async Task UpdateZoneIdAsync(string topLevelDomain, string zoneid)
+        {
+            await SetValue(topLevelDomain, zoneid, "ZoneIds");
+          
+        }
+
+        public async Task<string> GetRemoteLocationAsync(string topLevelDomain)
+        {
+           
+            return await GetValue<string,string>(topLevelDomain, "Orders");
+        }
+
+        private async Task<Value> GetValue<Key, Value>(Key topLevelDomain, string dictKey) where Key : IEquatable<Key>, IComparable<Key>
+        {
+            var collection = await this.StateManager.GetOrAddAsync<IReliableDictionary<Key, Value>>(dictKey);
+            using (var tx = this.StateManager.CreateTransaction())
+            {
+                var result = await collection.TryGetValueAsync(tx, topLevelDomain, TimeSpan.FromSeconds(10), CancellationToken.None);
+                if (result.HasValue)
+                    return result.Value;
+
+                await tx.CommitAsync();
+            }
+
+            return default(Value);
+        }
+
+        private async Task SetValue<Key, Value>(Key topLevelDomain, Value location, string dictKey) where Key : IEquatable<Key>, IComparable<Key>
+        {
+            var connection = await this.StateManager.GetOrAddAsync<IReliableDictionary<Key, Value>>(dictKey);
+            using (var tx = this.StateManager.CreateTransaction())
+            {
+                await connection.AddOrUpdateAsync(tx, topLevelDomain, location, (a, b) => location, TimeSpan.FromSeconds(10), CancellationToken.None);
+                await tx.CommitAsync();
+            }
+        }
+
+        private async Task<bool> Exists<Key, Value>(Key key,string dictKey) where Key : IEquatable<Key>, IComparable<Key>
+        {
+            var collection = await this.StateManager.GetOrAddAsync<IReliableDictionary<Key, Value>>(dictKey);
+            using (var tx = this.StateManager.CreateTransaction())
+            {
+                return await collection.ContainsKeyAsync(tx,key,TimeSpan.FromSeconds(10),CancellationToken.None);
+               
+            }
+        }
+
+        public async Task ClearOrderAsync(string topLevelDomain)
+        {
+            var orders = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, string>>("Orders");
+            using (var tx = this.StateManager.CreateTransaction())
+            {
+                var result = await orders.TryRemoveAsync(tx, topLevelDomain, TimeSpan.FromSeconds(10), CancellationToken.None);
+                
+
+                await tx.CommitAsync();
+            }
+        }
+
+        public async Task SetRemoteLocationAsync(string topLevelDomain, string location)
+        {
+            
+            await SetValue(topLevelDomain, location, "Orders");
+        }
+
+      
+
+        public Task<bool> ExistsAsync(string dnsIdentifier)
+        {
+            return Exists<string,string>(dnsIdentifier, "Signers");
+        }
+
+        public Task<string> GetSignerAsync(string dnsIdentifier)
+        {
+            return GetValue<string, string>(dnsIdentifier, "Signers");
+          
+        }
+
+        public Task SetSigner(string dnsIdentifier, string pem)
+        {
+            return SetValue<string, string>(dnsIdentifier, pem,"Signers");
         }
     }
 

@@ -19,6 +19,8 @@ using SInnovations.Unity.AspNetCore;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore;
 //using ACMESharp.PKI;
 using SInnovations.ServiceFabric.ResourceProvider;
+using Unity.Injection;
+using Microsoft.ServiceFabric.Services.Remoting.Client;
 
 namespace SInnovations.ServiceFabric.GatewayService
 {
@@ -68,7 +70,7 @@ namespace SInnovations.ServiceFabric.GatewayService
 
 
                 container.WithStatefullService<GatewayManagementService>("GatewayManagementServiceType");
-
+                 
 
                 Thread.Sleep(Timeout.Infinite);
             }
@@ -76,6 +78,6 @@ namespace SInnovations.ServiceFabric.GatewayService
 
         }
 
-
+         
     }
 }
