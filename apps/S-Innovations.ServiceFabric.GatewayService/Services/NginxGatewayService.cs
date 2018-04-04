@@ -29,6 +29,7 @@ using Polly;
 using Polly.Retry;
 using SInnovations.ServiceFabric.GatewayService.Configuration;
 using System.Net.Http;
+using System.Security.Cryptography;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
@@ -444,13 +445,24 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         }
 
-        private static async Task WriteProxyPassLocation(int level, string location, string url, StringBuilder sb, string uniquekey, string upstreamName, GatewayServiceRegistrationData   gatewayServiceRegistrationData)
+        public static string ToGuid(string input)
         {
-
-            var tabs = string.Join("", Enumerable.Range(0, level + 1).Select(r => "\t"));
-            sb.AppendLine($"{string.Join("", Enumerable.Range(0, level).Select(r => "\t"))}location {location} {{");
+           
+            using (MD5 md5 = MD5.Create())
             {
+                byte[] hash = md5.ComputeHash(Encoding.Default.GetBytes(input));
+              return new Guid(hash).ToString("N");
+            }
+        }
 
+        private static async Task WriteProxyPassLocation(int level, string location, string url, StringBuilder sb_outer, string uniquekey, string upstreamName, GatewayServiceRegistrationData   gatewayServiceRegistrationData)
+        {
+          
+            var tabs = string.Join("", Enumerable.Range(0, level + 1).Select(r => "\t"));
+
+            sb_outer.AppendLine($"{string.Join("", Enumerable.Range(0, level).Select(r => "\t"))}location {location} {{");
+            {
+                var sb = new StringBuilder();
 
 
 
@@ -482,6 +494,12 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 if (gatewayServiceRegistrationData?.Properties.ContainsKey("cf-real-ip") ?? false)
                 {
+
+                    var realIpPath = "conf/realip.conf";
+                    Directory.CreateDirectory(Path.GetFullPath("conf"));
+
+                    var realIp = new StringBuilder();
+
                     var http = new HttpClient();
                     var ipsv4 = await http.GetStringAsync("https://www.cloudflare.com/ips-v4");
                     var ipsv6 = await http.GetStringAsync("https://www.cloudflare.com/ips-v6");
@@ -491,9 +509,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         .Concat(ipsv6.Split(breaks, StringSplitOptions.None))
                         .Where(s=>!string.IsNullOrWhiteSpace(s)))
                     {
-                        sb.AppendLine($"{tabs}set_real_ip_from  {line};");
+                        realIp.AppendLine($"set_real_ip_from  {line};");
                     }
-                    sb.AppendLine($"{tabs}real_ip_header  CF-Connecting-IP;");
+                    realIp.AppendLine($"real_ip_header  CF-Connecting-IP;");
+                    File.WriteAllText(realIpPath, realIp.ToString());
+                    sb.AppendLine($"{tabs}include {Path.GetFullPath(realIpPath)};");
                 }
 
 
@@ -547,11 +567,33 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 sb.AppendLine($"{tabs}proxy_cache_bypass $http_upgrade;");
                 sb.AppendLine($"{tabs}proxy_cache_bypass $http_pragma;");
 
+
+                var path = $"conf/{ToGuid(location + gatewayServiceRegistrationData?.Key)}.conf";
+                Directory.CreateDirectory(Path.GetFullPath("conf"));
+                File.WriteAllText(path, sb.ToString());
+
+                sb_outer.AppendLine($"{tabs}include {Path.GetFullPath(path)};");
+             //   sb_outer.Append(sb.ToString());
             }
-            sb.AppendLine($"{string.Join("", Enumerable.Range(0, level).Select(r => "\t"))}}}");
+            sb_outer.AppendLine($"{string.Join("", Enumerable.Range(0, level).Select(r => "\t"))}}}");
 
 
+            if(gatewayServiceRegistrationData.Properties?.ContainsKey("nginx-locations") ?? false)
+            {
+                var additionals = (string[])gatewayServiceRegistrationData.Properties["nginx-prefixes"];
+                foreach (var extra in additionals)
+                {
+                    sb_outer.AppendLine($"{string.Join("", Enumerable.Range(0, level).Select(r => "\t"))}location {location} {{");
+                    {
+                        var path = $"conf/{ToGuid(location + gatewayServiceRegistrationData?.Key)}.conf";
+                        sb_outer.AppendLine($"{tabs}include {Path.GetFullPath(path)};");
+                    }
+                    sb_outer.AppendLine($"{string.Join("", Enumerable.Range(0, level).Select(r => "\t"))}}}");
 
+                }
+            }
+
+           
         }
 
 
