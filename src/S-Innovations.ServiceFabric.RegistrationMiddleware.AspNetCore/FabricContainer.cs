@@ -8,6 +8,8 @@ using System.Reflection;
 using System;
 using System.IO;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Logging;
+using Unity.Lifetime;
 #if NETCORE20
 using Unity.Microsoft.DependencyInjection;
 
@@ -60,6 +62,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore
 #if NETCORE20
 
             var child = container.CreateChildContainer();
+            child.RegisterType<ILoggerFactory, LoggerFactory>(new ContainerControlledLifetimeManager());
+
             new ServiceCollection().BuildServiceProvider(child);
             return child;
 
@@ -72,5 +76,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore
             return container.WithAspNetCoreServiceProvider();
 #endif
         }
+
+       
     }
 }

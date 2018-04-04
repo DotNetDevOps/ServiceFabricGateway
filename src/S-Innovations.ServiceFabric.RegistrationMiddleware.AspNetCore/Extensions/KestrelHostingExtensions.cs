@@ -40,7 +40,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
                         }));
 
                 container.RegisterInstance(new LoggerConfiguration());
-                container.RegisterType<LoggerFactory>(new ContainerControlledLifetimeManager(),
+                container.RegisterType<LoggerFactory>(new HierarchicalLifetimeManager(),
                      new InjectionFactory((c) =>
                      {
 
