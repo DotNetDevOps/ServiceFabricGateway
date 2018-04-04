@@ -40,7 +40,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
                         }));
 
                 container.RegisterInstance(new LoggerConfiguration());
-                container.RegisterType<ILoggerFactory>(new ContainerControlledLifetimeManager(),
+                container.RegisterType<LoggerFactory>(new ContainerControlledLifetimeManager(),
                      new InjectionFactory((c) =>
                      {
 
@@ -49,6 +49,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
                          return new LoggerFactory().AddSerilog(c.Resolve<Serilog.Core.Logger>());
 
                      }));
+                container.RegisterType<ILoggerFactory, LoggerFactory>();
             }
 
             _configurations.Add(configure);
