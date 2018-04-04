@@ -110,7 +110,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
 
         public static string BuildResourceProviderLocation(this IEnumerable<string> providers, bool subscriptions = true, bool resourceGroup = true)
         {
-            return $"~* ^/{(subscriptions ? "(subscriptions/[^/]+/)?" : "")}{(resourceGroup ? "(resourcegroups/[^/]+/)?" : "")}providers/({string.Join(" | ", providers)})";
+            return $"~* ^/{(subscriptions ? "(subscriptions/[^/]+/)?" : "")}{(resourceGroup ? "(resourcegroups/[^/]+/)?" : "")}providers/({string.Join("|", providers)})";
         }
     }
 }

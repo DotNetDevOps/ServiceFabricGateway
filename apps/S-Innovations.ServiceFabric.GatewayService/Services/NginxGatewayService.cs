@@ -536,6 +536,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 if (location.Trim().StartsWith("~") || location.Trim().StartsWith("/.well-known/"))
                     sb.AppendLine($"{tabs}proxy_set_header X-Forwarded-PathBase   /;");
+                else if(location.Trim().StartsWith("="))
+                    sb.AppendLine($"{tabs}proxy_set_header X-Forwarded-PathBase   {location.Substring(1).Trim()};");
                 else
                 {
                     sb.AppendLine($"{tabs}proxy_set_header X-Forwarded-PathBase   {location};");
