@@ -55,7 +55,7 @@
       </StatelessService>
     </Service>
     <Service Name="GatewayManagementService">
-      <StatefulService ServiceTypeName="GatewayManagementServiceType" TargetReplicaSetSize="2">
+      <StatefulService ServiceTypeName="GatewayManagementServiceType"  >
         <UniformInt64Partition PartitionCount="3" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
       </StatefulService>
     </Service>
