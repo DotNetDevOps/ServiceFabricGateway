@@ -13,6 +13,7 @@ namespace SInnovations.ServiceFabric.Gateway.Model
         public bool Enabled { get; set; }
     }
     [DataContract]
+    [KnownType(typeof(string[]))]
     public class GatewayServiceRegistrationData : IExtensibleDataObject
     {
         [DataMember]
@@ -39,6 +40,7 @@ namespace SInnovations.ServiceFabric.Gateway.Model
 
         [DataMember]
         public ProxyPassCacheOptions CacheOptions { get; set; } = new ProxyPassCacheOptions();
+
         [DataMember]
         public Dictionary<string, object> Properties { get; set; } = new Dictionary<string, object>();
 
