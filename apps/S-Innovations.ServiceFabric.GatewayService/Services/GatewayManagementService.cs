@@ -103,8 +103,13 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         public Dictionary<string,string> Endpoints { get; set; }
 
     }
+
+    public interface IServiceNotificationService:IService
+    {
+        Task RegisterServiceNotification(string  serviceName);
+    }
     public sealed class GatewayManagementService : StatefulService,
-        IGatewayManagementService, ICloudFlareZoneService, IServiceFabricIOrdersService, IServiceFabricIRS256SignerStore
+        IGatewayManagementService, ICloudFlareZoneService, IServiceFabricIOrdersService, IServiceFabricIRS256SignerStore, IServiceNotificationService
     {
         public const string STATE_LAST_UPDATED_NAME = "lastUpdated";
         public const string STATE_PROXY_DATA_NAME = "ProxyDictionary";
@@ -157,51 +162,96 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
 
 
-            while (!cancellationToken.IsCancellationRequested)
+            var gateways = await GetGatewayServicesAsync(cancellationToken);
+            foreach(var gateway in gateways)
             {
-
-
-                var hostname = "";
-
-
-                using (var tx = StateManager.CreateTransaction())
-                {
-                    try
-                    {
-                        var itemFromQueue = await store.TryDequeueAsync(tx).ConfigureAwait(false);
-                        if (!itemFromQueue.HasValue)
-                        {
-                            await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
-                            continue;
-                        }
-
-                        hostname = itemFromQueue.Value;
-                    }
-                    catch (Exception ex)
-                    {
-                        continue;
-                    }
-                    await tx.CommitAsync();
-                }
-
                 try
                 {
 
-                    await CreateCertificateAsync(hostname, store, certs, certContainer, cancellationToken);
-
+                    await GatewayManagementServiceClient.GetProxy<IServiceNotificationService>(this.Context.ServiceName.AbsoluteUri, gateway.ServiceName.AbsoluteUri)
+                        .RegisterServiceNotification(gateway.ServiceName.AbsoluteUri);
                 }
                 catch (Exception ex)
                 {
+                    logger.LogWarning(ex, "Failed to register initial notification in Registering gateway service {key}", gateway.Key);
+                }
+            }
+
+           
+
+            try
+            {
+                while (!cancellationToken.IsCancellationRequested)
+                {
+
+
+                    var hostname = "";
+
+
                     using (var tx = StateManager.CreateTransaction())
                     {
-                        await store.EnqueueAsync(tx, hostname);
+                        try
+                        {
+                            var itemFromQueue = await store.TryDequeueAsync(tx).ConfigureAwait(false);
+                            if (!itemFromQueue.HasValue)
+                            {
+                                await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
+                                continue;
+                            }
+
+                            hostname = itemFromQueue.Value;
+                        }
+                        catch (Exception ex)
+                        {
+                            continue;
+                        }
+                        await tx.CommitAsync();
                     }
 
-                    await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken).ConfigureAwait(false);
+                    try
+                    {
+
+                        await CreateCertificateAsync(hostname, store, certs, certContainer, cancellationToken);
+
+                    }
+                    catch (Exception ex)
+                    {
+                        using (var tx = StateManager.CreateTransaction())
+                        {
+                            await store.EnqueueAsync(tx, hostname);
+                        }
+
+                        await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken).ConfigureAwait(false);
+                    }
+
+
+                }
+            }
+            finally
+            {
+
+                var notifications = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, long>>("ServiceNotifications");
+
+                using (var tx = this.StateManager.CreateTransaction())
+                {
+                    var enumerable = await notifications.CreateEnumerableAsync(tx);
+
+                    using (var e = enumerable.GetAsyncEnumerator())
+                    {
+                        while (await e.MoveNextAsync(cancellationToken).ConfigureAwait(false))
+                        {
+                          
+                            await fabricClient.ServiceManager.UnregisterServiceNotificationFilterAsync(e.Current.Value);
+                           
+                        }
+                    }
+                }
+                using (var tx = this.StateManager.CreateTransaction())
+                {
+                    await notifications.ClearAsync();
                 }
 
-
-            }
+                }
         }
         public async Task CreateCertificateAsync(string hostname, IReliableQueue<string> store, IReliableDictionary<string, CertGenerationState> certs, CloudBlobContainer certContainer, CancellationToken cancellationToken)
         {
@@ -757,7 +807,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 using (var tx = this.StateManager.CreateTransaction())
                 {
-                    await proxies.AddOrUpdateAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}" , data, (key, old) => data);
+                    await proxies.AddOrUpdateAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", data, (key, old) => data);
 
                     await tx.CommitAsync();
 
@@ -766,29 +816,16 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 try
                 {
-                    var notifications = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, long>>("ServiceNotifications");
-                    using (var tx = this.StateManager.CreateTransaction())
-                    {
-                        await notifications.GetOrAddAsync(tx, data.ServiceName.AbsoluteUri, (serviceName) =>
-                          {
-                              logger.LogInformation("Registering notification filter for {serviceName}",serviceName);
-                              var filterDescription = new ServiceNotificationFilterDescription
-                              {
-                                  Name = data.ServiceName // new Uri("fabric:"),
-                                                          // MatchNamePrefix = true,
-                                                          // MatchPrimaryChangeOnly = true
-                          };
 
-                              fabricClient.ServiceManager.ServiceNotificationFilterMatched +=  OnNotification;
-
-                              return fabricClient.ServiceManager.RegisterServiceNotificationFilterAsync(filterDescription).GetAwaiter().GetResult();
-                          });
-                    }
-                }catch(Exception ex)
+                    await GatewayManagementServiceClient.GetProxy<IServiceNotificationService>(this.Context.ServiceName.AbsoluteUri, data.ServiceName.AbsoluteUri)
+                        .RegisterServiceNotification(data.ServiceName.AbsoluteUri);
+                }
+                catch (Exception ex)
                 {
                     logger.LogWarning(ex, "Failed to register notification in Registering gateway service {key}", data.Key);
                 }
-              //  fabric.ServiceManager.ServiceNotificationFilterMatched += ServiceManager_ServiceNotificationFilterMatched;
+
+                //  fabric.ServiceManager.ServiceNotificationFilterMatched += ServiceManager_ServiceNotificationFilterMatched;
             }
             catch (Exception ex)
             {
@@ -798,6 +835,32 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             _lastUpdated = DateTimeOffset.UtcNow;
             logger.LogInformation("End Registering gateway service {key}", data.Key);
         }
+
+        public async Task RegisterServiceNotification(string serviceNameUri)
+        {
+            
+                var notifications = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, long>>("ServiceNotifications");
+                using (var tx = this.StateManager.CreateTransaction())
+                {
+                    await notifications.GetOrAddAsync(tx, serviceNameUri, (serviceName) =>
+                    {
+                        
+                        logger.LogInformation("Registering notification filter for {serviceName}", serviceName);
+                        var filterDescription = new ServiceNotificationFilterDescription
+                        {
+                            Name = new Uri(serviceName) // new Uri("fabric:"),
+                                                    // MatchNamePrefix = true,
+                                                    // MatchPrimaryChangeOnly = true
+                        };
+
+                        fabricClient.ServiceManager.ServiceNotificationFilterMatched += OnNotification;
+
+                        return fabricClient.ServiceManager.RegisterServiceNotificationFilterAsync(filterDescription).GetAwaiter().GetResult();
+                    });
+                }
+           
+        }
+
         private void OnNotification(object sender, EventArgs e)
         {
            // var fabricClient = new FabricClient();
