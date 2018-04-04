@@ -1,15 +1,15 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Unity;
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Client;
 using Microsoft.ServiceFabric.Services.Client;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
+using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using Microsoft.WindowsAzure.Storage;
 using SInnovations.ServiceFabric.Gateway.Actors;
-using SInnovations.ServiceFabric.Gateway.Common.Actors;
 using SInnovations.ServiceFabric.Gateway.Common.Model;
 using SInnovations.ServiceFabric.Gateway.Model;
+using SInnovations.ServiceFabric.GatewayService.Actors;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services;
 using SInnovations.ServiceFabric.Storage.Configuration;
@@ -23,7 +23,10 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
+using Unity;
+using SInnovations.ServiceFabric.Gateway.Common.Actors;
+using Polly;
+using Polly.Retry;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
@@ -101,8 +104,13 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         private async Task WriteConfigAsync(CancellationToken token)
         {
+
+            _logger.LogInformation("Writing Nginx Configuration");
+
             var endpoint = FabricRuntime.GetActivationContext().GetEndpoint("NginxServiceEndpoint");
             var sslEndpoint = FabricRuntime.GetActivationContext().GetEndpoint("NginxSslServiceEndpoint");
+
+         
 
             var sb = new StringBuilder();
 
@@ -181,31 +189,31 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 foreach (var upstreams in proxies.GroupBy(k => k.ServiceName))
                 {
-                    var hashset = new HashSet<string>();
+                   
 
-                    var uniques = upstreams.Where(upstream =>
-                    {
-                        var added = hashset.Contains(new Uri(upstream.BackendPath).Authority);
-                        if (!added) { hashset.Add(new Uri(upstream.BackendPath).Authority); }
-                        return !added;
-                    }).ToArray();
+                    GatewayServiceRegistrationData[] uniques = GetUniueGatewayRegistrations(upstreams);
 
                     var upstreamName = upstreams.Key.AbsoluteUri.Split('/').Last().Replace('.', '_');
-                    //$upstream_addr
+
+                    _logger.LogInformation("Writing upstream {upstreamName} for {serviceName}",upstreamName, upstreams.Key);
+                
+                     
                     sb.AppendLine($"\tupstream {upstreamName} {{");
 
                     var upstreamIp_Hash = upstreams.Any(u => u.Properties.ContainsKey("upstream_ip_hash") && (bool)u.Properties["upstream_ip_hash"]);
                     if (upstreamIp_Hash)
                     {
                         sb.AppendLine("\t\tip_hash;");
-
+                        _logger.LogInformation("Adding ip_hash to upstream {upstreamName}", upstreamName);
                     }
 
 
                     foreach (var upstream in uniques)
                     {
+                        var server = $"\t\tserver {new Uri(upstream.BackendPath).Authority.Replace("localhost", "127.0.0.1")} {(upstream.IPAddressOrFQDN != Context.NodeContext.IPAddressOrFQDN && !upstreamIp_Hash ? "backup" : "")};";
 
-                        sb.AppendLine($"\t\tserver {new Uri(upstream.BackendPath).Authority.Replace("localhost", "127.0.0.1")} {(upstream.IPAddressOrFQDN != Context.NodeContext.IPAddressOrFQDN && !upstreamIp_Hash ? "backup" : "")};");
+                        _logger.LogInformation("{upstream} : {server}",upstreamName,server.Trim());
+                        sb.AppendLine(server);
                     }
                     sb.AppendLine("\t}");
 
@@ -253,7 +261,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                     if (sslOn)
                     {
+
                         var state = await GetCertGenerationStateAsync(serverName, serverGroup.Value.First().Ssl, false, token);
+
+                        _logger.LogInformation("Certificate for {servername}: {isNull} {isCompleted}", serverName, state == null, state?.Completed??false);
                         sslOn = state != null && state.Completed;
                     }
 
@@ -383,7 +394,18 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             File.WriteAllText("nginx.conf", sb.ToString());
         }
 
+        private static GatewayServiceRegistrationData[] GetUniueGatewayRegistrations(IGrouping<Uri, GatewayServiceRegistrationData> upstreams)
+        {
+            var hashset = new HashSet<string>();
 
+            var uniques = upstreams.Where(upstream =>
+            {
+                var added = hashset.Contains(new Uri(upstream.BackendPath).Authority);
+                if (!added) { hashset.Add(new Uri(upstream.BackendPath).Authority); }
+                return !added;
+            }).ToArray();
+            return uniques;
+        }
 
         private static StringBuilder WriteMimeTypes(StringBuilder sb, string name)
         {
@@ -424,7 +446,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 {
                     if(gatewayServiceRegistrationData?.Properties.ContainsKey("nginx-rewrite")?? false)
                     {
-                        sb.AppendLine($"{tabs}rewrite {gatewayServiceRegistrationData?.Properties["nginx-rewrite"]} break;");
+                        sb.AppendLine($"{tabs}rewrite {gatewayServiceRegistrationData?.Properties["nginx-rewrite"]}");
                     }
                     sb.AppendLine($"{tabs}proxy_pass {url.TrimEnd('/')}/;");
 
@@ -539,25 +561,25 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         private DateTimeOffset lastWritten = DateTimeOffset.MinValue;
 
 
-        public async Task DeleteGatewayServiceAsync(string v, CancellationToken cancellationToken)
-        {
-            var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
-            var actorServiceUri = new Uri($"{applicationName}/GatewayServiceManagerActorService");
-            List<long> partitions = await GetPartitionsAsync(actorServiceUri);
-            var serviceProxyFactory = new ServiceProxyFactory(c => new FabricTransportServiceRemotingClientFactory());
+        //public async Task DeleteGatewayServiceAsync(string v, CancellationToken cancellationToken)
+        //{
+        //    var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
+        //    var actorServiceUri = new Uri($"{applicationName}/GatewayServiceManagerActorService");
+        //    List<long> partitions = await GetPartitionsAsync(actorServiceUri);
+        //    var serviceProxyFactory = new ServiceProxyFactory(c => new FabricTransportServiceRemotingClientFactory());
 
 
-            foreach (var partition in partitions)
-            {
-                var actorService = serviceProxyFactory.CreateServiceProxy<IGatewayServiceManagerActorService>(actorServiceUri, new ServicePartitionKey(partition));
-                await actorService.DeleteGatewayServiceAsync(v, cancellationToken);
-            }
+        //    foreach (var partition in partitions)
+        //    {
+        //        var actorService = serviceProxyFactory.CreateServiceProxy<IGatewayServiceManagerActorService>(actorServiceUri, new ServicePartitionKey(partition));
+        //        await actorService.DeleteGatewayServiceAsync(v, cancellationToken);
+        //    }
 
-        }
+        //}
         public async Task<List<GatewayServiceRegistrationData>> GetGatewayServicesAsync(CancellationToken cancellationToken)
         {
             var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
-            var actorServiceUri = new Uri($"{applicationName}/GatewayServiceManagerActorService");
+            var actorServiceUri = new Uri($"{applicationName}/{nameof(GatewayManagementService)}");
             List<long> partitions = await GetPartitionsAsync(actorServiceUri);
 
             var serviceProxyFactory = new ServiceProxyFactory(c => new FabricTransportServiceRemotingClientFactory());
@@ -565,7 +587,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             var all = new List<GatewayServiceRegistrationData>();
             foreach (var partition in partitions)
             {
-                var actorService = serviceProxyFactory.CreateServiceProxy<IGatewayServiceManagerActorService>(actorServiceUri, new ServicePartitionKey(partition));
+                var actorService = serviceProxyFactory.CreateServiceProxy<IGatewayManagementService>(actorServiceUri, new ServicePartitionKey(partition));
 
                 var state = await actorService.GetGatewayServicesAsync(cancellationToken);
                 all.AddRange(state);
@@ -591,94 +613,123 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         {
 
             var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
-            var actorServiceUri = new Uri($"{applicationName}/GatewayServiceManagerActorService");
-
-            if (options.UseHttp01Challenge)
-            {
-                var actorService = ActorServiceProxy.Create<IGatewayServiceManagerActorService>(actorServiceUri, new ActorId(hostname));
-
-                var state = await actorService.GetCertGenerationInfoAsync(hostname, options, token);
-                if (state != null && state.RunAt.HasValue && state.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14)))
-                {
-                    return state;
-                }
-
-                await ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId(hostname)).RequestCertificateAsync(hostname, options);
-
-
-
-            }
+            var ServiceUri = new Uri($"{applicationName}/{nameof(GatewayManagementService)}");
+            var gateway = ServiceProxy.Create<IGatewayManagementService>(
+                ServiceUri, hostname.ToPartitionHashFunction());
+         //   var actorService = ActorServiceProxy.Create<IGatewayServiceManagerActorService>(actorServiceUri, new ActorId(hostname));
 
             if (!force)
             {
 
-                List<long> partitions = await GetPartitionsAsync(actorServiceUri);
-
-                var serviceProxyFactory = new ServiceProxyFactory(c => new FabricTransportServiceRemotingClientFactory());
-
-                var actors = new Dictionary<long, DateTimeOffset>();
-                foreach (var partition in partitions)
+                var state = await gateway.GetCertGenerationInfoAsync(hostname, token);
+                if (state != null && state.RunAt.HasValue && state.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14)))
                 {
-                    var actorService = serviceProxyFactory.CreateServiceProxy<IGatewayServiceManagerActorService>(actorServiceUri, new ServicePartitionKey(partition));
-
-                    var state = await actorService.GetCertGenerationInfoAsync(hostname, options, token);
-                    if (state != null && state.RunAt.HasValue && state.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14)))
-                    {
-                        return state;
-                    }
-
+                    return state;
                 }
             }
 
-            var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("*"));
+
             await gateway.RequestCertificateAsync(hostname, options);
+           // await ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId(hostname))
+
+            //if (options.UseHttp01Challenge)
+            //{
+            //    var actorService = ActorServiceProxy.Create<IGatewayServiceManagerActorService>(actorServiceUri, new ActorId(hostname));
+
+            //    var state = await actorService.GetCertGenerationInfoAsync(hostname, options, token);
+            //    if (state != null && state.RunAt.HasValue && state.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14)))
+            //    {
+            //        return state;
+            //    }
+
+            //    await ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId(hostname)).RequestCertificateAsync(hostname, options);
+
+
+
+            //}
+
+            //if (!force)
+            //{
+            //    {
+            //        var proxy =ActorServiceProxy.Create<IGatewayServiceManagerActorService>
+            //    }
+            //    {
+            //        List<long> partitions = await GetPartitionsAsync(actorServiceUri);
+
+            //        var serviceProxyFactory = new ServiceProxyFactory(c => new FabricTransportServiceRemotingClientFactory());
+
+            //        var actors = new Dictionary<long, DateTimeOffset>();
+            //        foreach (var partition in partitions)
+            //        {
+            //            var actorService = serviceProxyFactory.CreateServiceProxy<IGatewayServiceManagerActorService>(actorServiceUri, new ServicePartitionKey(partition));
+
+            //            var state = await actorService.GetCertGenerationInfoAsync(hostname, options, token);
+            //            if (state != null && state.RunAt.HasValue && state.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14)))
+            //            {
+            //                return state;
+            //            }
+
+            //        }
+            //    }
+            //}
+
+            //var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("*"));
+            //await gateway.RequestCertificateAsync(hostname, options);
 
             return null;
         }
-        public async Task SetLastUpdatedAsync(DateTimeOffset time, CancellationToken token)
-        {
+        //public async Task SetLastUpdatedAsync(DateTimeOffset time, CancellationToken token)
+        //{
 
-            var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("*"));
-            await gateway.SetLastUpdatedNow();
+        //    var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("*"));
+        //    await gateway.SetLastUpdatedNow();
 
-        }
-        public async Task<IDictionary<ActorId, DateTimeOffset>> GetLastUpdatedAsync(CancellationToken token)
+        //}
+        public async Task<DateTimeOffset> GetLastUpdatedAsync(CancellationToken token)
         {
+            var lastupdated = DateTimeOffset.MinValue;
 
             var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
-            var actorServiceUri = new Uri($"{applicationName}/GatewayServiceManagerActorService");
+            var actorServiceUri = new Uri($"{applicationName}/{nameof(GatewayManagementService)}");
             List<long> partitions = await GetPartitionsAsync(actorServiceUri);
 
-            var serviceProxyFactory = new ServiceProxyFactory(c => new FabricTransportServiceRemotingClientFactory());
+            //var serviceProxyFactory = new ServiceProxyFactory(c => new FabricTransportServiceRemotingClientFactory());
 
-            var actors = new Dictionary<ActorId, DateTimeOffset>();
-            foreach (var partition in partitions)
-            {
-                var actorService = serviceProxyFactory.CreateServiceProxy<IGatewayServiceManagerActorService>(actorServiceUri, new ServicePartitionKey(partition));
+            var updated = await Task.WhenAll(
+                partitions.Select(partition => 
+                ServiceProxy.Create<IGatewayManagementService>(actorServiceUri, new ServicePartitionKey(partition)).GetLastUpdatedAsync(token)));
 
-                var counts = await actorService.GetLastUpdatedAsync(token);
-                foreach (var count in counts)
-                {
-                    actors.Add(count.Key, count.Value);
-                }
-            }
-            return actors;
+            return updated.Max(v=>v.GetValueOrDefault());
+            
+           
         }
-
+      
         protected override async Task RunAsync(CancellationToken cancellationToken)
         {
+            var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
+            var actorServiceUri = new Uri($"{applicationName}/{nameof(GatewayManagementService)}");
 
+
+            RetryPolicy retryPolicy = Policy
+            .Handle<Exception>()            
+            .WaitAndRetryAsync(3, retryAttempt =>
+              TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+            (exception, timeSpan, context) => {
+                _logger.LogWarning(exception, "Retrying to write config");
+            }
+            );
 
             try
             {
 
                 storageAccount = await Storage.GetApplicationStorageAccountAsync();
 
-                var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("*"));
+                var gateway = ServiceProxy.Create<IGatewayManagementService>(actorServiceUri,  Path.GetRandomFileName().ToPartitionHashFunction());
                 var a = await _fabricClient.ServiceManager.GetServiceDescriptionAsync(this.Context.ServiceName) as StatelessServiceDescription;
 
                 await gateway.SetupStorageServiceAsync(a.InstanceCount);
-                await WriteConfigAsync(cancellationToken);
+
+                await retryPolicy.ExecuteAsync(() => WriteConfigAsync(cancellationToken));
 
                 LaunchNginxProcess($"-c \"{Path.GetFullPath("nginx.conf")}\"");
 
@@ -689,21 +740,24 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     if (cancellationToken.IsCancellationRequested)
                         LaunchNginxProcess($"-c \"{Path.GetFullPath("nginx.conf")}\" -s quit");
                     cancellationToken.ThrowIfCancellationRequested();
-                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                    await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
 
                     if (!IsNginxRunning())
                         LaunchNginxProcess($"-c \"{Path.GetFullPath("nginx.conf")}\"");
 
-                    var allActorsUpdated = await GetLastUpdatedAsync(cancellationToken);
+                    var lastUpdated = await GetLastUpdatedAsync(cancellationToken);
                     //   if (allActorsUpdated.ContainsKey(gateway.GetActorId()))
                     {
                         //     var updated = allActorsUpdated[gateway.GetActorId()];  // await gateway.GetLastUpdatedAsync();
-                        var updated = allActorsUpdated.Values.OrderByDescending(k => k).First();
-                        if (!lastWritten.Equals(updated))
+                         
+                        if (!lastWritten.Equals(lastUpdated))
                         {
-                            lastWritten = updated;
-                            await WriteConfigAsync(cancellationToken);
 
+
+                            await retryPolicy.ExecuteAsync(() => WriteConfigAsync(cancellationToken));
+
+
+                            lastWritten = lastUpdated;
                             LaunchNginxProcess($"-c \"{Path.GetFullPath("nginx.conf")}\" -s reload");
                         }
 
@@ -711,6 +765,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 }
 
             }
+            
             catch (Exception ex)
             {
                 _logger.LogWarning(new EventId(), ex, "RunAsync Failed");

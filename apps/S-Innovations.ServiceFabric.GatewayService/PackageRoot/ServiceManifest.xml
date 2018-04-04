@@ -8,6 +8,8 @@
     <StatelessServiceType ServiceTypeName="ApplicationStorageServiceType" />
     <StatelessServiceType ServiceTypeName="KeyVaultServiceType" />
     <StatelessServiceType ServiceTypeName="ResourceProviderServiceType" />
+    <StatefulServiceType ServiceTypeName="GatewayManagementServiceType" HasPersistedState="true" />
+
     <StatefulServiceType ServiceTypeName="GatewayServiceManagerActorServiceType" HasPersistedState="true">
       <Extensions>
         <Extension Name="__GeneratedServiceType__" GeneratedId="ef5ab963-c061-486e-bb1c-84bf1c2fc7e1|Persisted">

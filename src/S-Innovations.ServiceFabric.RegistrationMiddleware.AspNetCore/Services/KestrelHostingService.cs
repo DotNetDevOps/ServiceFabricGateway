@@ -30,6 +30,11 @@ using System.Threading.Tasks;
 using Unity.Lifetime;
 using Unity.Injection;
 using Microsoft.ApplicationInsights.ServiceFabric.Module;
+using Microsoft.ServiceFabric.Services.Remoting.Client;
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.ServiceFabric.Services.Client;
+using SInnovations.ServiceFabric.Gateway.Common.Actors;
 #if NETCORE20
 using Unity.Microsoft.DependencyInjection;
 #endif
@@ -284,7 +289,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
             try
             {
-                var gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("*"), "S-Innovations.ServiceFabric.GatewayApplication", "GatewayServiceManagerActorService");
+               
 
 
                 if (!this.GetAddresses().TryGetValue("kestrel", out string backAddress))
@@ -305,11 +310,11 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                 try
                 {
 
-                    await RegisterGatewayServiceAsync(gateway, backAddress, Options.GatewayOptions);
+                    await RegisterGatewayServiceAsync(backAddress, Options.GatewayOptions);
 
                     foreach (var gw in Options.AdditionalGateways)
                     {
-                        await RegisterGatewayServiceAsync(gateway, backAddress, gw);
+                        await RegisterGatewayServiceAsync(backAddress, gw);
                     }
 
                 }
@@ -332,13 +337,19 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
         }
 
-        private async Task RegisterGatewayServiceAsync(IGatewayServiceManagerActor gateway, string backAddress, GatewayOptions gw)
+        private async Task RegisterGatewayServiceAsync(string backAddress, GatewayOptions gw)
         {
-           
-             
+
+            // IGatewayServiceManagerActor gateway = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("*"), "S-Innovations.ServiceFabric.GatewayApplication", "GatewayServiceManagerActorService");
+            var partitionKey = gw.Key ?? Context.CodePackageActivationContext.GetServiceManifestName();
+ 
+            var gateway = ServiceProxy.Create<IGatewayManagementService>(
+                new Uri("fabric:/S-Innovations.ServiceFabric.GatewayApplication/GatewayManagementService"),  partitionKey.ToPartitionHashFunction());
+
+
                 await gateway.RegisterGatewayServiceAsync(new GatewayServiceRegistrationData
                 {
-                    Key = $"{gw.Key ?? Context.CodePackageActivationContext.GetServiceManifestName()}-{Context.NodeContext.IPAddressOrFQDN}",
+                    Key = $"{partitionKey}-{Context.NodeContext.IPAddressOrFQDN}",
                     IPAddressOrFQDN = Context.NodeContext.IPAddressOrFQDN,
                     ServerName = gw.ServerName,
                     ReverseProxyLocation = gw.ReverseProxyLocation ?? "/",
@@ -374,4 +385,6 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
             builder.UseStartup<TStartUp>();
         }
     }
+
+    
 }

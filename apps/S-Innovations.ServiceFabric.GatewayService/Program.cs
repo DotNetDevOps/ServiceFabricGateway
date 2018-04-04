@@ -67,7 +67,7 @@ namespace SInnovations.ServiceFabric.GatewayService
                 container.WithStatelessService<ResourceProviderService>("ResourceProviderServiceType");
 
 
-                container.WithActor<GatewayServiceManagerActor, GatewayServiceManagerActorService>((services,context, actorType, factory) => new GatewayServiceManagerActorService(context, actorType, factory));
+                container.WithStatefullService<GatewayManagementService>("GatewayManagementServiceType");
 
 
                 Thread.Sleep(Timeout.Infinite);

@@ -13,7 +13,7 @@ namespace SInnovations.ServiceFabric.Gateway.Model
         public bool Enabled { get; set; }
     }
     [DataContract]
-    public class GatewayServiceRegistrationData
+    public class GatewayServiceRegistrationData : IExtensibleDataObject
     {
         [DataMember]
         public string ReverseProxyLocation { get; set; }
@@ -41,5 +41,16 @@ namespace SInnovations.ServiceFabric.Gateway.Model
         public ProxyPassCacheOptions CacheOptions { get; set; } = new ProxyPassCacheOptions();
         [DataMember]
         public Dictionary<string, object> Properties { get; set; } = new Dictionary<string, object>();
+
+        [DataMember]
+        public DateTimeOffset Time { get; private set; } = DateTimeOffset.UtcNow;
+
+        private ExtensionDataObject theData;
+
+        public virtual ExtensionDataObject ExtensionData
+        {
+            get { return theData; }
+            set { theData = value; }
+        }
     }
 }
