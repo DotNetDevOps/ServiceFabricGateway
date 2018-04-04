@@ -769,7 +769,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     var notifications = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, long>>("ServiceNotifications");
                     using (var tx = this.StateManager.CreateTransaction())
                     {
-                        await notifications.GetOrAddAsync(tx, data.ServerName, (serviceName) =>
+                        await notifications.GetOrAddAsync(tx, data.ServiceName.AbsoluteUri, (serviceName) =>
                           {
                               logger.LogInformation("Registering notification filter for {serviceName}",serviceName);
                               var filterDescription = new ServiceNotificationFilterDescription
