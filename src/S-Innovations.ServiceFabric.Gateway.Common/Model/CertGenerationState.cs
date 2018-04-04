@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace SInnovations.ServiceFabric.Gateway.Common.Model
 {
     [DataContract]
-    public class CertHttpChallengeInfo
+    public class CertHttpChallengeInfo : IExtensibleDataObject
     {
         [DataMember]
         public string KeyAuthString { get; set; }
@@ -23,10 +23,24 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
         {
             return new CertHttpChallengeInfo { Location = location, Token = Token, KeyAuthString = KeyAuthString };
         }
+        private ExtensionDataObject theData;
+
+        public virtual ExtensionDataObject ExtensionData
+        {
+            get { return theData; }
+            set { theData = value; }
+        }
     }
     [DataContract]
-    public class CertGenerationState
+    public class CertGenerationState: IExtensibleDataObject
     {
+        private ExtensionDataObject theData;
+
+        public virtual ExtensionDataObject ExtensionData
+        {
+            get { return theData; }
+            set { theData = value; }
+        }
         public CertGenerationState()
         {
             RunAt = DateTimeOffset.UtcNow;
@@ -40,6 +54,9 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
         [DataMember]
         public bool Completed { get; private set; }
 
+        [DataMember]
+        public int Counter { get; private set; } = 0;
+
         public CertGenerationState Complete()
         {
             return new CertGenerationState
@@ -47,7 +64,7 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
                 Completed = true,
                 HostName = HostName,
                 SslOptions = new SslOptions { Enabled = SslOptions.Enabled, SignerEmail = SslOptions.SignerEmail, UseHttp01Challenge = SslOptions.UseHttp01Challenge },
-                RunAt = RunAt,
+                RunAt = DateTimeOffset.UtcNow,
                 HttpChallengeInfo = HttpChallengeInfo
             };
         }
@@ -74,6 +91,19 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
                 SslOptions = new SslOptions { Enabled = SslOptions.Enabled, SignerEmail = SslOptions.SignerEmail, UseHttp01Challenge = SslOptions.UseHttp01Challenge },
                 RunAt = RunAt,
                 HttpChallengeInfo = certHttpChallengeInfo
+            };
+        }
+
+        public CertGenerationState Increment()
+        {
+            return new CertGenerationState
+            {
+                Completed = Completed,
+                HostName = HostName,
+                SslOptions = new SslOptions { Enabled = SslOptions.Enabled, SignerEmail = SslOptions.SignerEmail, UseHttp01Challenge = SslOptions.UseHttp01Challenge },
+                RunAt = DateTimeOffset.UtcNow,
+                HttpChallengeInfo = HttpChallengeInfo, 
+                Counter = Counter+1
             };
         }
     }

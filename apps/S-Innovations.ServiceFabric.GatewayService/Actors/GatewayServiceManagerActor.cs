@@ -107,8 +107,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
 
 
-                    if ((await Task.WhenAll(certBlob.ExistsAsync(), keyBlob.ExistsAsync(), fullchain.ExistsAsync())).Any(t => t == false) ||
-                         await CertExpiredAsync(certBlob))
+                    if (certInfo.Counter < 3 &&((await Task.WhenAll(certBlob.ExistsAsync(), keyBlob.ExistsAsync(), fullchain.ExistsAsync())).Any(t => t == false) ||
+                         await CertExpiredAsync(certBlob)))
                     {
 
                         if (certInfo.SslOptions.UseHttp01Challenge)
@@ -160,6 +160,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
             }
             catch (Exception ex)
             {
+                using (ITransaction tx = StateManager.CreateTransaction())
+                {
+                    await certs.SetAsync(tx, hostname, certInfo.Increment());
+                    await tx.CommitAsync();
+                }
                 await certsContainer.GetBlockBlobReference($"{hostname}.err").UploadTextAsync(ex.ToString());
 
             }
