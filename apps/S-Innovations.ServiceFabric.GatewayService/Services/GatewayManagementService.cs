@@ -964,7 +964,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                                     if (data.Ready)
                                     {
                                         logger.LogInformation("marked {@gateway} as dead", $"{data.Key}-{data.IPAddressOrFQDN}");
-                                        await proxies.TryUpdateAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", data.MarkAsDead(), data);
+                                        await proxies.SetAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", data.MarkAsDead());
                                         await tx.CommitAsync();
                                     }
                                 }
@@ -984,18 +984,13 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     {
                         using (var tx = this.StateManager.CreateTransaction())
                         {
-                            if (await proxies.ContainsKeyAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}"))
-                            {
+                           
                                 logger.LogInformation("marking {gateway} as ready", $"{data.Key}-{data.IPAddressOrFQDN}");
 
-                                await proxies.TryUpdateAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", data.MarkAsReady(), data);
+                                await proxies.SetAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", data.MarkAsReady());
                                 await tx.CommitAsync();
                                 _lastUpdated = DateTimeOffset.UtcNow;
-                            }
-                            else
-                            {
-                                logger.LogInformation("{gateway} did not exists", $"{data.Key}-{data.IPAddressOrFQDN}");
-                            }
+                            
 
 
 
@@ -1290,7 +1285,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             {
                 using (var tx = this.StateManager.CreateTransaction())
                 {
-                    await proxies.TryUpdateAsync(tx, $"{restart.Key}-{restart.IPAddressOrFQDN}", restart.MarkForRestart(), restart);
+                    await proxies.SetAsync(tx, $"{restart.Key}-{restart.IPAddressOrFQDN}", restart.MarkForRestart());
 
                     await tx.CommitAsync();
 
