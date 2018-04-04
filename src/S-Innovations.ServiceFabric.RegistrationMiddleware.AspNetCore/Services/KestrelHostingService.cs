@@ -358,6 +358,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
 
                     var gateways = await gateway.GetGatewayServicesAsync(cancellationToken);
+
                     if (gateways.Any(gw => gw.Key == partitionKey && gw.IPAddressOrFQDN == Context.NodeContext.IPAddressOrFQDN && gw.BackendPath == backAddress && gw.RestartRequested))
                     {
                         
@@ -365,7 +366,9 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                             _logger.LogInformation("Restarting {nodeName} {partitionId} {replicationOrInstanceId}", this.Context.NodeContext.NodeName, this.Context.PartitionId, this.Context.ReplicaOrInstanceId);
 
                             await new FabricClient().ServiceManager.RemoveReplicaAsync(this.Context.NodeContext.NodeName, this.Context.PartitionId, this.Context.ReplicaOrInstanceId); //stateless
-                        
+
+                            return;
+
                     }
                 }
 
