@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using Newtonsoft.Json.Linq;
 
@@ -33,9 +34,12 @@ namespace SInnovations.ServiceFabric.Storage.Configuration
     {
         private readonly TokenCache _cache;
         private readonly ConfigurationPackage _config;
+        private readonly ILogger logger;
         // private readonly 
-        public AzureADConfiguration(ConfigurationPackage configurationPackage, TokenCache cache)
+        public AzureADConfiguration(ConfigurationPackage configurationPackage, TokenCache cache, ILoggerFactory loggerFactory)
         {
+            logger = loggerFactory?.CreateLogger<AzureADConfiguration>() ?? throw new ArgumentNullException(nameof(loggerFactory));
+
             _cache = cache;
             _config = configurationPackage;
 
@@ -124,11 +128,21 @@ namespace SInnovations.ServiceFabric.Storage.Configuration
 
             if (UseMSI)
             {
+                logger.LogInformation("Using MSI at {host} to get token for management.azure.com", $"http://localhost:{section["AzureADMSIPort"].Value}");
+
+
                 var http = new HttpClient();
                 var req = new HttpRequestMessage(HttpMethod.Get,$"http://localhost:{section["AzureADMSIPort"].Value}/oauth2/token?resource=https://management.azure.com/");
                 req.Headers.TryAddWithoutValidation("Metadata", "true");
 
                 var tokenresponse = await http.SendAsync(req);
+
+                if(tokenresponse.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+                    logger.LogInformation("Succeded for MSI at {host} to get token for management.azure.com", $"http://localhost:{section["AzureADMSIPort"].Value}");
+                }
+
+                tokenresponse.EnsureSuccessStatusCode();
 
                 return JToken.Parse(await tokenresponse.Content.ReadAsStringAsync()).SelectToken("$.access_token").ToString();
 
