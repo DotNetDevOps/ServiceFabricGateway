@@ -328,7 +328,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                         if(sslOn)
                         {
-                            sb.AppendLine(sslOn.ToString());
+                            sb.AppendLine(sslsb.ToString());
                         }
                         else
                         {
