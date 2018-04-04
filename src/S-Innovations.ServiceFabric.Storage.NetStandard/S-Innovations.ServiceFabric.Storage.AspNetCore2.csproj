@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net462;netstandard2.0</TargetFrameworks>
@@ -29,7 +29,7 @@
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="2.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.AzureStorage" Version="2.0.2" />
     <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="3.19.4" />
-    <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="1.0.0-pre-2018042001" />
+    <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="1.0.0-pre-2018042101" />
     <PackageReference Include="WindowsAzure.Storage" Version="9.1.1" />
   </ItemGroup>
   
