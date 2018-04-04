@@ -41,7 +41,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
         {
             this.codePackageActivationContext = codePackageActivationContext;
         }
-        public static TimeSpan TimeoutSpan = TimeSpan.FromSeconds(30);
+        public static TimeSpan TimeoutSpan = TimeSpan.FromSeconds(10);
 
         public static RetryPolicy TimeOutRetry= Policy
               .Handle<TimeoutException>()

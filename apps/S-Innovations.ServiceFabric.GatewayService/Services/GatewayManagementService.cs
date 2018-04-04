@@ -247,28 +247,31 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             finally
             {
 
-                var notifications = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, long>>("ServiceNotifications");
+                //var notifications = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, long>>("ServiceNotifications");
 
-                using (var tx = this.StateManager.CreateTransaction())
-                {
-                    var enumerable = await notifications.CreateEnumerableAsync(tx);
+                 
+                //using (var tx = this.StateManager.CreateTransaction())
+                //{
+                //    var enumerable = await notifications.CreateEnumerableAsync(tx,EnumerationMode.Unordered);
 
-                    using (var e = enumerable.GetAsyncEnumerator())
-                    {
-                        while (await e.MoveNextAsync(cancellationToken).ConfigureAwait(false))
-                        {
+                //    using (var e = enumerable.GetAsyncEnumerator())
+                //    {
+                //        while (await e.MoveNextAsync(cancellationToken).ConfigureAwait(false))
+                //        {
+
                           
-                            await fabricClient.ServiceManager.UnregisterServiceNotificationFilterAsync(e.Current.Value);
+                //            await fabricClient.ServiceManager.UnregisterServiceNotificationFilterAsync(e.Current.Value);
                            
-                        }
-                    }
-                }
-                using (var tx = this.StateManager.CreateTransaction())
-                {
-                    await notifications.ClearAsync();
-                }
+                //        }
+                //    }
+                //}
 
-                }
+                //using (var tx = this.StateManager.CreateTransaction())
+                //{
+                //    await notifications.ClearAsync();
+                //}
+
+            }
         }
         public async Task CreateCertificateAsync(string hostname, IReliableQueue<string> store, IReliableDictionary<string, CertGenerationState> certs, CloudBlobContainer certContainer, CancellationToken cancellationToken)
         {
@@ -793,6 +796,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             logger.LogInformation("End setting up storage services");
         }
 
+        private bool notificationRegistered = false;
 
         public async Task RegisterGatewayServiceAsync(GatewayServiceRegistrationData data)
         {
@@ -842,6 +846,13 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     logger.LogWarning(ex, "Failed to register notification in Registering gateway service {key}", data.Key);
                 }
 
+                if(!notificationRegistered)
+                {
+                    fabricClient.ServiceManager.ServiceNotificationFilterMatched += OnNotification;
+                    notificationRegistered = true;
+                    logger.LogInformation("ServiceNotificationEvent registered for on {node}",Context.NodeContext.NodeName);
+                }
+
                 //  fabric.ServiceManager.ServiceNotificationFilterMatched += ServiceManager_ServiceNotificationFilterMatched;
             }
             catch (Exception ex)
@@ -870,7 +881,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                                                     // MatchPrimaryChangeOnly = true
                         };
 
-                        fabricClient.ServiceManager.ServiceNotificationFilterMatched += OnNotification;
+                     //   fabricClient.ServiceManager.ServiceNotificationFilterMatched += OnNotification;
 
                         return fabricClient.ServiceManager.RegisterServiceNotificationFilterAsync(filterDescription).GetAwaiter().GetResult();
                     });
@@ -932,8 +943,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
            // fabricClient.ServiceManager.GetServiceDescriptionAsync(new Uri("")).Result.
            //  fabricClient.QueryManager.GetServiceListAsync(new Uri(""),new Uri("")).Result.First().
             var castedEventArgs = (FabricClient.ServiceManagementClient.ServiceNotificationEventArgs)e;
-
-            logger.LogInformation("ServiceNotificationEventArgs was triggered for {@notification}",castedEventArgs.Notification);
+           
+            logger.LogInformation("ServiceNotificationEventArgs was triggered for {@notification} on {node}",castedEventArgs.Notification,Context.NodeContext.NodeName);
 
            // fabricClient.QueryManager.getin(new Uri("")).Result.First().
 
@@ -943,20 +954,20 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             var endpoints = notification.Endpoints.SelectMany(en => JToken.Parse(en.Address).ToObject<EndpointsModel>().Endpoints.Values).ToArray();
 
             //Loop over all partitions to clean up
-            var partitions = await fabricClient.QueryManager.GetPartitionListAsync(this.Context.ServiceName);
-            foreach(var partition in partitions)
-            {
-                var partitionInformation = partition.PartitionInformation as Int64RangePartitionInformation;
-
-              
-
-                await GatewayManagementServiceClient.GetProxy<IServiceNotificationService>(this.Context.ServiceName, new ServicePartitionKey(partitionInformation.LowKey))
-                    .ClearProxyAsync(notification.ServiceName.AbsoluteUri,string.Join(",", endpoints));
+            //var partitions = await fabricClient.QueryManager.GetPartitionListAsync(this.Context.ServiceName);
+            //foreach(var partition in partitions)
+            //{
+            //    var partitionInformation = partition.PartitionInformation as Int64RangePartitionInformation;
 
 
-            }
 
-            
+            //    await GatewayManagementServiceClient.GetProxy<IServiceNotificationService>(this.Context.ServiceName, new ServicePartitionKey(partitionInformation.LowKey))
+            //        .ClearProxyAsync(notification.ServiceName.AbsoluteUri,string.Join(",", endpoints));
+
+
+            //}
+
+            await ClearProxyAsync(notification.ServiceName.AbsoluteUri, string.Join(",", endpoints));
 
 
             //Console.WriteLine(
