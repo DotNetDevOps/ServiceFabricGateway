@@ -399,7 +399,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
         }
 
-        public async Task RequestCertificateAsync(string hostname, SslOptions options, bool force=false)
+        public async Task RequestCertificateAsync(string hostname, SslOptions options, bool force)
         {
 
             var certs = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, CertGenerationState>>(STATE_CERTS_DATA_NAME);
