@@ -717,6 +717,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         public async Task RegisterGatewayServiceAsync(GatewayServiceRegistrationData data)
         {
+            //Remove when upgrade cycle is done
+            if (data.Key.EndsWith(data.IPAddressOrFQDN))
+                data.Key = data.Key.Substring(0, data.Key.Length - 1 - data.IPAddressOrFQDN.Length);
+
             logger.LogInformation("Begin Registering gateway service {key} {@gatewaydata}", data.Key, data);
             try
             {
@@ -739,7 +743,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 using (var tx = this.StateManager.CreateTransaction())
                 {
-                    await proxies.AddOrUpdateAsync(tx, data.Key, data, (key, old) => data);
+                    await proxies.AddOrUpdateAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}" , data, (key, old) => data);
 
                     await tx.CommitAsync();
 
@@ -833,6 +837,9 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 {
                     while (await e.MoveNextAsync(cancellationToken).ConfigureAwait(false))
                     {
+                        //Remove when upgrade cycle is done
+                        if (e.Current.Value.Key.EndsWith(e.Current.Value.IPAddressOrFQDN))
+                            e.Current.Value.Key = e.Current.Value.Key.Substring(0, e.Current.Value.Key.Length - 1 - e.Current.Value.IPAddressOrFQDN.Length);
 
                         list.Add(e.Current.Value);
                     }

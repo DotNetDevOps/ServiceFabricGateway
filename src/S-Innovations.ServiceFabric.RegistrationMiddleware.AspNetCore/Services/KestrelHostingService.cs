@@ -350,7 +350,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
                 await gateway.RegisterGatewayServiceAsync(new GatewayServiceRegistrationData
                 {
-                    Key = $"{partitionKey}-{Context.NodeContext.IPAddressOrFQDN}",
+                    Key = partitionKey, // $"{partitionKey}-{Context.NodeContext.IPAddressOrFQDN}",
                     IPAddressOrFQDN = Context.NodeContext.IPAddressOrFQDN,
                     ServerName = gw.ServerName,
                     ReverseProxyLocation = gw.ReverseProxyLocation ?? "/",

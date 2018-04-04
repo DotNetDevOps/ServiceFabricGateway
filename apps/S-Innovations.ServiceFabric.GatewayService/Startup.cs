@@ -199,7 +199,9 @@ namespace SInnovations.ServiceFabric.GatewayService
             services.AddSingleton(provider);
             services.AddDefaultHttpRequestDispatcherProvider();
 
-            services.AddRouting();         
+            services.AddRouting();
+
+            services.AddCors(o => o.AddPolicy("GatewayManagement", c => c.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin()));
             
         }
         public void ConfigureContainer(IUnityContainer container)
@@ -226,6 +228,7 @@ namespace SInnovations.ServiceFabric.GatewayService
             //builder.Use((next) => new CustomTelemetryProcessor(next));
             //builder.Build();
 
+            app.UseCors("GatewayManagement");
 
             app.UseRouter(router =>
             {

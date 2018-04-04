@@ -30,12 +30,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Diagnostics">
-      <Version>2.0.2</Version>
-    </PackageReference>
-    <PackageReference Include="Microsoft.AspNetCore.Routing">
-      <Version>2.0.2</Version>
-    </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Cors" Version="2.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Diagnostics" Version="2.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Routing" Version="2.0.2" />
     <PackageReference Include="S-Innovations.LetsEncrypt.DnsMadeEasyChallenger" Version="1.0.0-pre-2018040701" />
     <PackageReference Include="Microsoft.Extensions.Configuration.AzureKeyVault" Version="2.0.1" />
     <PackageReference Include="Serilog.Sinks.Literate" Version="3.0.0" />

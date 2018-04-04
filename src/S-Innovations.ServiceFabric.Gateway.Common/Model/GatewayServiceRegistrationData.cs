@@ -16,6 +16,8 @@ namespace SInnovations.ServiceFabric.Gateway.Model
     [KnownType(typeof(string[]))]
     public class GatewayServiceRegistrationData : IExtensibleDataObject
     {
+        public string ProxyName => Key.Substring(0, Key.Length - IPAddressOrFQDN.Length - 1);
+
         [DataMember]
         public string ReverseProxyLocation { get; set; }
         [DataMember]
