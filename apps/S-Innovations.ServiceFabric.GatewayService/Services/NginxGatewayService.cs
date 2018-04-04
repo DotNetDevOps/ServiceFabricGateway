@@ -513,7 +513,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     }
                     realIp.AppendLine($"real_ip_header  CF-Connecting-IP;");
                     File.WriteAllText(realIpPath, realIp.ToString());
-                    sb.AppendLine($"{tabs}include {Path.GetFullPath(realIpPath)};");
+                    sb.AppendLine($"{tabs}include {Path.GetFullPath(realIpPath).Replace("\\","/")};");
                 }
 
 
@@ -572,7 +572,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 Directory.CreateDirectory(Path.GetFullPath("conf"));
                 File.WriteAllText(path, sb.ToString());
 
-                sb_outer.AppendLine($"{tabs}include {Path.GetFullPath(path)};");
+                sb_outer.AppendLine($"{tabs}include {Path.GetFullPath(path).Replace("\\", "/")};");
              //   sb_outer.Append(sb.ToString());
             }
             sb_outer.AppendLine($"{string.Join("", Enumerable.Range(0, level).Select(r => "\t"))}}}");
