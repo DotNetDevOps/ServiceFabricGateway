@@ -32,6 +32,8 @@ namespace SInnovations.ServiceFabric.Gateway.Actors
         Task<DateTimeOffset> GetLastUpdatedAsync(CancellationToken token);
         Task<string> GetChallengeResponseAsync(string hostname,CancellationToken requestAborted);
         Task SetupStorageServiceAsync(int instanceCount);
+
+        Task RestartRequestAsync(string partitionKey, CancellationToken cancellationToken);
     }
 
     //public interface IGatewayServiceManagerActor : IActor

@@ -1279,6 +1279,26 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         {
             return SetValue<string, string>(dnsIdentifier, pem, "Signers");
         }
+
+        public async Task RestartRequestAsync(string partitionKey, CancellationToken cancellationToken)
+        {
+            var gateways = await GetGatewayServicesAsync(cancellationToken);
+
+            var proxies = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, GatewayServiceRegistrationData>>(STATE_PROXY_DATA_NAME);
+
+            foreach (var restart in gateways.Where(k => k.Key == partitionKey))
+            {
+                using (var tx = this.StateManager.CreateTransaction())
+                {
+                    await proxies.TryUpdateAsync(tx, $"{restart.Key}-{restart.IPAddressOrFQDN}", restart.MarkForRestart(), restart);
+
+                    await tx.CommitAsync();
+
+
+                }
+
+            }
+        }
     }
 
     public static class MaxOrDefaultEx

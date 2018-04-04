@@ -52,6 +52,9 @@ namespace SInnovations.ServiceFabric.Gateway.Model
         [DataMember]
         public bool Ready { get; set; } = true;
 
+        [DataMember]
+        public bool RestartRequested { get; set; } = false;
+
         private ExtensionDataObject theData;
 
         public virtual ExtensionDataObject ExtensionData
@@ -59,6 +62,8 @@ namespace SInnovations.ServiceFabric.Gateway.Model
             get { return theData; }
             set { theData = value; }
         }
+
+      
 
         public GatewayServiceRegistrationData MarkAsDead()
         {
@@ -76,7 +81,8 @@ namespace SInnovations.ServiceFabric.Gateway.Model
                 ServiceVersion = ServiceVersion,
                 Ssl = Ssl,
                 Time = Time,
-                Ready = false
+                Ready = false,
+                RestartRequested = RestartRequested
             };
         }
 
@@ -96,7 +102,29 @@ namespace SInnovations.ServiceFabric.Gateway.Model
                 ServiceVersion = ServiceVersion,
                 Ssl = Ssl,
                 Time = DateTimeOffset.UtcNow,
-                Ready = true
+                Ready = true,
+                RestartRequested = RestartRequested
+            };
+        }
+
+        public GatewayServiceRegistrationData MarkForRestart()
+        {
+            return new GatewayServiceRegistrationData
+            {
+                ReverseProxyLocation = ReverseProxyLocation,
+                BackendPath = BackendPath,
+                CacheOptions = CacheOptions,
+                ExtensionData = ExtensionData,
+                IPAddressOrFQDN = IPAddressOrFQDN,
+                Key = Key,
+                Properties = Properties,
+                ServerName = ServerName,
+                ServiceName = ServiceName,
+                ServiceVersion = ServiceVersion,
+                Ssl = Ssl,
+                Time = DateTimeOffset.UtcNow,
+                Ready = Ready,
+                RestartRequested = true
             };
         }
     }

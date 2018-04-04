@@ -29,6 +29,7 @@ using Unity.Injection;
 using Microsoft.ApplicationInsights.ServiceFabric.Module;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using SInnovations.ServiceFabric.Gateway.Common.Extensions;
+using System.Linq;
 #if NETCORE20
 using Unity.Microsoft.DependencyInjection;
 #endif
@@ -105,8 +106,11 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
     //        this.Next.Process(item);
     //    }
     //}
-
-    public class KestrelHostingService : StatelessService
+    public interface IApplicationManager
+    {
+        Task RestartRequestAsync(CancellationToken cancellationToken);
+    }
+    public class KestrelHostingService : StatelessService, IApplicationManager
     {
         public Action<IWebHostBuilder> WebBuilderConfiguration { get; set; }
 
@@ -135,6 +139,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
             services.AddSingleton(this.Context);
             services.AddSingleton<ServiceContext>(this.Context);
             services.AddSingleton(this);
+            services.AddSingleton<IApplicationManager>(this);
 
             services.AddSingleton(Container);
 
@@ -330,6 +335,46 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                 throw;
             }
 
+        }
+        public async Task RestartRequestAsync(CancellationToken cancellationToken)
+        {
+            var partitionKey = Options.GatewayOptions.Key ?? Context.CodePackageActivationContext.GetServiceManifestName();
+            var gateway = ServiceProxy.Create<IGatewayManagementService>(
+                new Uri("fabric:/S-Innovations.ServiceFabric.GatewayApplication/GatewayManagementService"), partitionKey.ToPartitionHashFunction());
+
+            await gateway.RestartRequestAsync(partitionKey, cancellationToken);
+        }
+        protected override async Task RunAsync(CancellationToken cancellationToken)
+        {
+            var partitionKey = Options.GatewayOptions.Key ?? Context.CodePackageActivationContext.GetServiceManifestName();
+            var gateway = ServiceProxy.Create<IGatewayManagementService>(
+                new Uri("fabric:/S-Innovations.ServiceFabric.GatewayApplication/GatewayManagementService"), partitionKey.ToPartitionHashFunction());
+            
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (this.GetAddresses().TryGetValue("kestrel", out string backAddress))
+                {
+
+
+                    var gateways = await gateway.GetGatewayServicesAsync(cancellationToken);
+                    if (gateways.Any(gw => gw.Key == partitionKey && gw.IPAddressOrFQDN == Context.NodeContext.IPAddressOrFQDN && gw.BackendPath == backAddress && gw.RestartRequested))
+                    {
+                        
+                        
+                            _logger.LogInformation("Restarting {nodeName} {partitionId} {replicationOrInstanceId}", this.Context.NodeContext.NodeName, this.Context.PartitionId, this.Context.ReplicaOrInstanceId);
+
+                            await new FabricClient().ServiceManager.RemoveReplicaAsync(this.Context.NodeContext.NodeName, this.Context.PartitionId, this.Context.ReplicaOrInstanceId); //stateless
+                        
+                    }
+                }
+
+                var j = 60;
+                while (!cancellationToken.IsCancellationRequested && j --> 0)
+                {
+                    await Task.Delay(1000);
+                }
+            }
         }
 
         private async Task RegisterGatewayServiceAsync(string backAddress, GatewayOptions gw)
