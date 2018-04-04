@@ -37,6 +37,7 @@ using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Runtime;
 using SInnovations.LetsEncrypt.Services.Defaults;
 using SInnovations.LetsEncrypt.Stores;
+using SInnovations.LetsEncrypt.Services;
 
 namespace SInnovations.ServiceFabric.GatewayService.Actors
 {
@@ -48,35 +49,38 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
         Task<string> GetSignerAsync(string dnsIdentifier);
         Task SetSigner(string dnsIdentifier, string cert);
     }
-    public interface ServiceFabricIOrdersService :  IService
+    public interface ServiceFabricIOrdersService : IService
     {
         Task<string> GetRemoteLocationAsync(string topLevelDomain);
         Task ClearOrderAsync(string topLevelDomain);
         Task SetRemoteLocationAsync(string domain, string location);
     }
-    public sealed class GatewayManagementService : StatefulService, 
-        IGatewayManagementService , ICloudFlareZoneService, ServiceFabricIOrdersService, ServiceFabricIRS256SignerStore
+    public sealed class GatewayManagementService : StatefulService,
+        IGatewayManagementService, ICloudFlareZoneService, ServiceFabricIOrdersService, ServiceFabricIRS256SignerStore
     {
         public const string STATE_LAST_UPDATED_NAME = "lastUpdated";
         public const string STATE_PROXY_DATA_NAME = "ProxyDictionary";
         public const string STATE_CERTS_DATA_NAME = "CertsDictionary";
         public const string STATE_CERTS_QUEUE_DATA_NAME = "CertsQueue";
 
-      //  private readonly CloudFlareZoneService cloudFlareZoneService;
+        //  private readonly CloudFlareZoneService cloudFlareZoneService;
         private readonly StorageConfiguration storage;
         private readonly LetsEncryptService<AcmeContext> letsEncrypt;
+        private readonly IAcmeClientService<AcmeContext> acmeClientService;
 
         private CloudStorageAccount StorageAccount { get; set; }
 
         public GatewayManagementService(
             StatefulServiceContext context,
             StorageConfiguration storage,
-            LetsEncryptService<AcmeContext> letsEncrypt)
+            LetsEncryptService<AcmeContext> letsEncrypt,
+            IAcmeClientService<AcmeContext> acmeClientService)
             : base(context)
         {
 
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
             this.letsEncrypt = letsEncrypt ?? throw new ArgumentNullException(nameof(letsEncrypt));
+            this.acmeClientService = acmeClientService ?? throw new ArgumentNullException(nameof(acmeClientService));
         }
 
         protected override IEnumerable<ServiceReplicaListener> CreateServiceReplicaListeners()
@@ -86,7 +90,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
         protected override async Task RunAsync(CancellationToken cancellationToken)
         {
-          
+
+            await Task.Delay(TimeSpan.FromMinutes(2));
 
             StorageAccount = await storage.GetApplicationStorageAccountAsync();
 
@@ -99,35 +104,52 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
             while (!cancellationToken.IsCancellationRequested)
             {
-               
 
+
+                var hostname = "";
+
+               
                 using (var tx = StateManager.CreateTransaction())
                 {
-
                     try
                     {
-                        await Test(tx, store, certs, certContainer, cancellationToken);
+                        var itemFromQueue = await store.TryDequeueAsync(tx).ConfigureAwait(false);
+                        if (!itemFromQueue.HasValue)
+                        {
+                            await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken).ConfigureAwait(false);
+                            continue;
+                        }
 
-                        await tx.CommitAsync();
+                        hostname = itemFromQueue.Value;
                     }catch(Exception ex)
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken).ConfigureAwait(false);
+                        continue;
                     }
-                   
+                    await tx.CommitAsync();
                 }
+
+                try
+                {
+
+                    await Test(hostname, store, certs, certContainer, cancellationToken);
+
+                }
+                catch (Exception ex)
+                {
+                    using (var tx = StateManager.CreateTransaction())
+                    {
+                        await store.EnqueueAsync(tx, hostname);
+                    }
+
+                    await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken).ConfigureAwait(false);
+                }
+
+
             }
         }
-        public async Task Test(ITransaction tx,IReliableQueue<string> store, IReliableDictionary<string, CertGenerationState> certs, CloudBlobContainer certContainer, CancellationToken cancellationToken)
+        public async Task Test(string hostname1, IReliableQueue<string> store, IReliableDictionary<string, CertGenerationState> certs, CloudBlobContainer certContainer, CancellationToken cancellationToken)
         {
 
-            var itemFromQueue = await store.TryDequeueAsync(tx).ConfigureAwait(false);
-            if (!itemFromQueue.HasValue)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
-                return;
-            }
-
-            var hostname1 = itemFromQueue.Value;
 
             //We will assume wildcard certs.
 
@@ -138,34 +160,44 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
             var fullchain = certContainer.GetBlockBlobReference($"{domain1}.fullchain.pem");
             var keyBlob = certContainer.GetBlockBlobReference($"{domain1}.key");
 
+            CertGenerationState certInfo = null;
 
-            var certInfoLookup = await certs.TryGetValueAsync(tx, hostname1);
-            var certInfo = certInfoLookup.Value;
-
-
-
-            if (certInfo.Counter < 3 && ((await Task.WhenAll(certBlob.ExistsAsync(), keyBlob.ExistsAsync(), fullchain.ExistsAsync())).Any(t => t == false) ||
-                 await CertExpiredAsync(certBlob)))
+            using (var tx1 = StateManager.CreateTransaction())
             {
+                var certInfoLookup = await certs.TryGetValueAsync(tx1, hostname1, LockMode.Default, GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
+                certInfo = certInfoLookup.Value;
+            }
 
-                if (certInfo.SslOptions.UseHttp01Challenge)
+
+
+
+                if (certInfo.Counter < 3 && ((await Task.WhenAll(certBlob.ExistsAsync(), keyBlob.ExistsAsync(), fullchain.ExistsAsync())).Any(t => t == false) ||
+                     await CertExpiredAsync(certBlob)))
                 {
-                    await HandleHttpChallengeAsync(store, certs, hostname1, certBlob, fullchain, keyBlob, certInfo);
 
+                    if (certInfo.SslOptions.UseHttp01Challenge)
+                    {
+                        await HandleHttpChallengeAsync(store, certs, hostname1, certBlob, fullchain, keyBlob, certInfo);
+
+                    }
+                    else
+                    {
+                        await HandleDnsChallengeAsync(certs, certContainer, hostname1, certBlob, fullchain, keyBlob, certInfo);
+                    }
                 }
                 else
                 {
-                    await HandleDnsChallengeAsync(certs, certContainer, hostname1, certBlob, fullchain, keyBlob, certInfo);
+                    using (var tx = StateManager.CreateTransaction())
+                    {
+                        await certs.SetAsync(tx, hostname1, certInfo.Complete());
+                        await tx.CommitAsync();
+                    }
                 }
-            }
-            else
-            {
-                await certs.SetAsync(tx, hostname1, certInfo.Complete());
-            }
+            
 
         }
-        public static AcmeClient client = new AcmeClient(WellKnownServers.LetsEncryptV2);
-        public static ConcurrentDictionary<string, Task<AcmeAccount>> _acmeaccounts = new ConcurrentDictionary<string, Task<AcmeAccount>>();
+       // public static AcmeClient client = new AcmeClient(WellKnownServers.LetsEncryptV2);
+      //  public static ConcurrentDictionary<string, Task<AcmeAccount>> _acmeaccounts = new ConcurrentDictionary<string, Task<AcmeAccount>>();
 
         private async Task HandleDnsChallengeAsync(IReliableDictionary<string, CertGenerationState> certs, CloudBlobContainer certsContainer, string hostname, CloudBlockBlob certBlob, CloudBlockBlob fullchain, CloudBlockBlob keyBlob, CertGenerationState certInfo)
         {
@@ -185,7 +217,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
                 using (ITransaction tx = StateManager.CreateTransaction())
                 {
-                    await certs.SetAsync(tx, hostname, certInfo.Complete(),TimeSpan.FromSeconds(10),CancellationToken.None);
+                    await certs.SetAsync(tx, hostname, certInfo.Complete(), GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
                     await tx.CommitAsync();
                 }
             }
@@ -193,29 +225,55 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
             {
                 using (ITransaction tx = StateManager.CreateTransaction())
                 {
-                    await certs.SetAsync(tx, hostname, certInfo.Increment(), TimeSpan.FromSeconds(10), CancellationToken.None);
+                    await certs.SetAsync(tx, hostname, certInfo.Increment(), GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
                     await tx.CommitAsync();
                 }
                 await certsContainer.GetBlockBlobReference($"{hostname}.err").UploadTextAsync(ex.ToString());
 
             }
         }
-        private static async Task<AcmeAccount> AcmeAccountFactory(string email)
-        {
+        //private static async Task<AcmeAccount> AcmeAccountFactory(string email)
+        //{
 
-            // Create new registration
-            var account1 = await client.NewRegistraton("mailto:" + email);
+        //    // Create new registration
+        //    var account1 = await client.NewRegistraton("mailto:" + email);
 
 
-            // Accept terms of services
-            account1.Data.Agreement = account1.GetTermsOfServiceUri();
-            account1 = await client.UpdateRegistration(account1);
-            return account1;
+        //    // Accept terms of services
+        //    account1.Data.Agreement = account1.GetTermsOfServiceUri();
+        //    account1 = await client.UpdateRegistration(account1);
+        //    return account1;
 
-        }
-        private async Task HandleHttpChallengeAsync( IReliableQueue<string> store, IReliableDictionary<string, CertGenerationState> certs, 
+        //}
+        private async Task HandleHttpChallengeAsync(IReliableQueue<string> store, IReliableDictionary<string, CertGenerationState> certs,
             string hostname, CloudBlockBlob certBlob, CloudBlockBlob fullchain, CloudBlockBlob keyBlob, CertGenerationState certInfo)
         {
+
+            var client = new AcmeClient(WellKnownServers.LetsEncryptV2);
+
+            if (await ExistsAsync(certInfo.SslOptions.SignerEmail))
+            {
+                client.Use(KeyInfo.From(new MemoryStream(Encoding.ASCII.GetBytes(await GetSignerAsync(certInfo.SslOptions.SignerEmail)))));
+            }
+            else
+            {
+                var ctx = new Certes.AcmeContext(WellKnownServers.LetsEncryptV2);
+
+                var tos = ctx.TermsOfService();
+
+                var ac = await ctx.NewAccount(certInfo.SslOptions.SignerEmail, true);
+
+                await ac.Update(
+                    contact: new[] { $"mailto:{certInfo.SslOptions.SignerEmail}" },
+                    agreeTermsOfService: true);
+
+
+                var pem = ctx.AccountKey.ToPem();
+                //  var ms = new MemoryStream(Encoding.ASCII.GetBytes(pem));
+                await SetSigner(certInfo.SslOptions.SignerEmail, pem);
+                client.Use(KeyInfo.From(new MemoryStream(Encoding.ASCII.GetBytes(pem))));
+            }
+
             if (certInfo.HttpChallengeInfo == null)
             {
                 try
@@ -223,12 +281,15 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                     //using (var client = new AcmeClient(WellKnownServers.LetsEncryptStaging))
                     {
 
-                        var account = await _acmeaccounts.AddOrUpdate(certInfo.SslOptions.SignerEmail, AcmeAccountFactory, (email, old) =>
-                        {
-                            if (old.IsFaulted || old.IsCanceled)
-                                return AcmeAccountFactory(email);
-                            return old;
-                        });
+                      
+                      
+                       
+                        var context = await acmeClientService.CreateClientAsync(WellKnownServers.LetsEncryptV2.AbsoluteUri,null, certInfo.SslOptions.SignerEmail);
+
+                        var account = await context.Account();
+
+
+                         
                         // Initialize authorization
                         var authz = await client.NewAuthorization(new AuthorizationIdentifier
                         {
@@ -236,7 +297,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                             Value = hostname
                         });
                         var httpChallengeInfo = authz.Data.Challenges.First(c => c.Type == ChallengeTypes.Http01);
-                          
+
                         using (ITransaction tx = StateManager.CreateTransaction())
                         {
                             await certs.SetAsync(tx, hostname, certInfo.SetCertHttpChallengeInfo(new CertHttpChallengeInfo
@@ -248,11 +309,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
                             await tx.CommitAsync();
                         }
-                         
+
                         using (ITransaction tx = StateManager.CreateTransaction())
                         {
                             await certs.SetAsync(tx, hostname, certInfo.SetCertHttpChallengeLocation((await client.CompleteChallenge(httpChallengeInfo)).Location.AbsoluteUri));
-                            await store.EnqueueAsync(tx,hostname);
+                            await store.EnqueueAsync(tx, hostname);
                             await tx.CommitAsync();
                         }
 
@@ -342,10 +403,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                             }
                             finally
                             {
-                                
+
                                 using (ITransaction tx = StateManager.CreateTransaction())
                                 {
-                                    await certs.SetAsync(tx,hostname,certInfo.Complete());
+                                    await certs.SetAsync(tx, hostname, certInfo.Complete());
                                     await tx.CommitAsync();
                                 }
                             }
@@ -359,7 +420,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                     {
                         using (ITransaction tx = StateManager.CreateTransaction())
                         {
-                             await store.EnqueueAsync(tx, hostname);
+                            await store.EnqueueAsync(tx, hostname);
                             await tx.CommitAsync();
                         }
                     }
@@ -383,7 +444,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                 return true;
             }
         }
-
+        
         public async Task SetupStorageServiceAsync(int instanceCount)
         {
             var client = new FabricClient();
@@ -407,7 +468,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
             }
         }
- 
+
 
         public async Task RegisterGatewayServiceAsync(GatewayServiceRegistrationData data)
         {
@@ -418,7 +479,9 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                     var dnsidentifiers = data.ServerName.Split(' ').Select(d => string.Join(".", d.Split('.').TakeLast(2)).ToLower()).Distinct().ToArray();
                     if (dnsidentifiers.Length == 1)
                     {
-                        await UpdateZoneIdAsync(dnsidentifiers.First(), data.Properties["CloudFlareZoneId"] as string);
+                        //Have to use the proxy to get correct partition, this is the key partition for which the proxy is added.
+                        await GatewayManagementServiceClient.GetProxy<ICloudFlareZoneService>(this.Context.ServiceName.AbsoluteUri,dnsidentifiers.First())
+                            .UpdateZoneIdAsync(dnsidentifiers.First(), data.Properties["CloudFlareZoneId"] as string);
                     }
                 }
 
@@ -433,7 +496,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
 
                 }
-            }catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 throw;
             }
@@ -444,24 +508,30 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
         {
 
             var certs = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, CertGenerationState>>(STATE_CERTS_DATA_NAME);
-            
-            using (var tx = this.StateManager.CreateTransaction())
+
+            await GatewayManagementServiceClient.TimeOutRetry.ExecuteAsync(async () =>
             {
-                await certs.AddOrUpdateAsync(tx, hostname,
-                    new CertGenerationState { HostName = hostname, SslOptions = options, },
-                  (key, old) => new CertGenerationState(!force && old.Completed) { HostName = hostname, SslOptions = options }, TimeSpan.FromSeconds(10), CancellationToken.None);
-                await tx.CommitAsync();
-            }
+                using (var tx = this.StateManager.CreateTransaction())
+                {
+                    await certs.AddOrUpdateAsync(tx, hostname,
+                        new CertGenerationState { HostName = hostname, SslOptions = options, },
+                      (key, old) => new CertGenerationState(!force && old.Completed) { HostName = hostname, SslOptions = options }, GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
+                    await tx.CommitAsync();
+                }
+            });
 
             var queue = await this.StateManager.GetOrAddAsync<IReliableQueue<string>>(STATE_CERTS_QUEUE_DATA_NAME);
 
-            using (var tx = this.StateManager.CreateTransaction())
+            await GatewayManagementServiceClient.TimeOutRetry.ExecuteAsync(async () =>
             {
-                await queue.EnqueueAsync(tx, hostname,TimeSpan.FromSeconds(10),CancellationToken.None);
+                using (var tx = this.StateManager.CreateTransaction())
+                {
+                    await queue.EnqueueAsync(tx, hostname, GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
 
-                await tx.CommitAsync();
-            } 
-        
+                    await tx.CommitAsync();
+                }
+            });
+
         }
 
         public async Task<CertGenerationState> GetCertGenerationInfoAsync(string hostname, CancellationToken token)
@@ -470,9 +540,9 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
             using (var tx = this.StateManager.CreateTransaction())
             {
-                var result=await certs.TryGetValueAsync(tx, hostname);
-                if(result.HasValue)
-                return result.Value;
+                var result = await certs.TryGetValueAsync(tx, hostname);
+                if (result.HasValue)
+                    return result.Value;
             }
 
             return null;
@@ -486,11 +556,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
             {
                 var enumerable = await proxies.CreateEnumerableAsync(tx);
 
-                using(var e = enumerable.GetAsyncEnumerator())
+                using (var e = enumerable.GetAsyncEnumerator())
                 {
                     while (await e.MoveNextAsync(cancellationToken).ConfigureAwait(false))
                     {
-                      
+
                         list.Add(e.Current.Value);
                     }
                 }
@@ -527,7 +597,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
             var proxies = await GetGatewayServicesAsync(token);
 
             return certs.Select(c => c.RunAt.GetValueOrDefault()).Concat(proxies.Select(p => p.Time)).DefaultIfEmpty().Max();
- 
+
         }
 
         public async Task<string> GetChallengeResponseAsync(string hostname, CancellationToken requestAborted)
@@ -536,7 +606,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
             using (var tx = this.StateManager.CreateTransaction())
             {
-                var resutlt = await certs.TryGetValueAsync(tx, hostname,TimeSpan.FromMinutes(1), requestAborted);
+                var resutlt = await certs.TryGetValueAsync(tx, hostname, TimeSpan.FromMinutes(1), requestAborted);
                 if (resutlt.HasValue)
                 {
                     while (resutlt.Value.HttpChallengeInfo == null)
@@ -550,7 +620,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                 }
             }
 
-            
+
 
 
             throw new KeyNotFoundException();
@@ -564,13 +634,13 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
         public async Task UpdateZoneIdAsync(string topLevelDomain, string zoneid)
         {
             await SetValue(topLevelDomain, zoneid, "ZoneIds");
-          
+
         }
 
         public async Task<string> GetRemoteLocationAsync(string topLevelDomain)
         {
-           
-            return await GetValue<string,string>(topLevelDomain, "Orders");
+
+            return await GetValue<string, string>(topLevelDomain, "Orders");
         }
 
         private async Task<Value> GetValue<Key, Value>(Key topLevelDomain, string dictKey) where Key : IEquatable<Key>, IComparable<Key>
@@ -578,7 +648,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
             var collection = await this.StateManager.GetOrAddAsync<IReliableDictionary<Key, Value>>(dictKey);
             using (var tx = this.StateManager.CreateTransaction())
             {
-                var result = await collection.TryGetValueAsync(tx, topLevelDomain, TimeSpan.FromSeconds(10), CancellationToken.None);
+                var result = await collection.TryGetValueAsync(tx, topLevelDomain, GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
                 if (result.HasValue)
                     return result.Value;
 
@@ -593,18 +663,18 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
             var connection = await this.StateManager.GetOrAddAsync<IReliableDictionary<Key, Value>>(dictKey);
             using (var tx = this.StateManager.CreateTransaction())
             {
-                await connection.AddOrUpdateAsync(tx, topLevelDomain, location, (a, b) => location, TimeSpan.FromSeconds(10), CancellationToken.None);
+                await connection.AddOrUpdateAsync(tx, topLevelDomain, location, (a, b) => location, GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
                 await tx.CommitAsync();
             }
         }
 
-        private async Task<bool> Exists<Key, Value>(Key key,string dictKey) where Key : IEquatable<Key>, IComparable<Key>
+        private async Task<bool> Exists<Key, Value>(Key key, string dictKey) where Key : IEquatable<Key>, IComparable<Key>
         {
             var collection = await this.StateManager.GetOrAddAsync<IReliableDictionary<Key, Value>>(dictKey);
             using (var tx = this.StateManager.CreateTransaction())
             {
-                return await collection.ContainsKeyAsync(tx,key,TimeSpan.FromSeconds(10),CancellationToken.None);
-               
+                return await collection.ContainsKeyAsync(tx, key, GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
+
             }
         }
 
@@ -613,8 +683,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
             var orders = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, string>>("Orders");
             using (var tx = this.StateManager.CreateTransaction())
             {
-                var result = await orders.TryRemoveAsync(tx, topLevelDomain, TimeSpan.FromSeconds(10), CancellationToken.None);
-                
+                var result = await orders.TryRemoveAsync(tx, topLevelDomain, GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
+
 
                 await tx.CommitAsync();
             }
@@ -622,26 +692,26 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
         public async Task SetRemoteLocationAsync(string topLevelDomain, string location)
         {
-            
+
             await SetValue(topLevelDomain, location, "Orders");
         }
 
-      
+
 
         public Task<bool> ExistsAsync(string dnsIdentifier)
         {
-            return Exists<string,string>(dnsIdentifier, "Signers");
+            return Exists<string, string>(dnsIdentifier, "Signers");
         }
 
         public Task<string> GetSignerAsync(string dnsIdentifier)
         {
             return GetValue<string, string>(dnsIdentifier, "Signers");
-          
+
         }
 
         public Task SetSigner(string dnsIdentifier, string pem)
         {
-            return SetValue<string, string>(dnsIdentifier, pem,"Signers");
+            return SetValue<string, string>(dnsIdentifier, pem, "Signers");
         }
     }
 
@@ -957,7 +1027,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
 
     //    private static  async Task<AcmeAccount> AcmeAccountFactory(string email)
     //    {
-           
+
     //            // Create new registration
     //            var account1 = await client.NewRegistraton("mailto:" + email);
 
@@ -966,7 +1036,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
     //            account1.Data.Agreement = account1.GetTermsOfServiceUri();
     //            account1 = await client.UpdateRegistration(account1);
     //            return account1;
-           
+
     //    }
 
     //    private async Task<bool> CertExpiredAsync(CloudBlockBlob certBlob)

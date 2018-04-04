@@ -40,6 +40,8 @@ using SInnovations.ServiceFabric.Gateway.Common.Actors;
 using SInnovations.ServiceFabric.GatewayService.Actors;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using Microsoft.ServiceFabric.Services.Remoting.FabricTransport;
+using Polly.Retry;
+using Polly;
 
 namespace SInnovations.ServiceFabric.GatewayService.Configuration
 {
@@ -83,11 +85,23 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
         {
             this.codePackageActivationContext = codePackageActivationContext;
         }
+        public static TimeSpan TimeoutSpan = TimeSpan.FromSeconds(30);
 
+        public static RetryPolicy TimeOutRetry= Policy
+              .Handle<TimeoutException>()
+              .WaitAndRetryAsync(
+                5, 
+                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), 
+                (exception, timeSpan, context) => {
+                  // do something
+                }
+              );
         protected T GetProxy<T>(string partition) where T:IService => CreateProxyFactoryFabricTransport().CreateServiceProxy<T>(new Uri($"{codePackageActivationContext.ApplicationName}/{nameof(GatewayManagementService)}"), partition.ToPartitionHashFunction());
 
-       
-        private static IServiceProxyFactory CreateProxyFactoryFabricTransport()
+        public static T GetProxy<T>(string service,string partition) where T : IService => CreateProxyFactoryFabricTransport().CreateServiceProxy<T>(new Uri(service), partition.ToPartitionHashFunction());
+
+
+        public static IServiceProxyFactory CreateProxyFactoryFabricTransport()
         {
 
 
@@ -214,7 +228,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
 
 
 
-        private LetsEncryptDnsMadeEasyManager dnsfallback;
+     
         private readonly ICloudFlareZoneService zoneService;
 
 
@@ -222,9 +236,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
         private readonly HttpClient http;
         private readonly string authKey;
         private readonly string authEmail;
-        public CloudFlareDNSClient(HttpClient http, LetsEncryptDnsMadeEasyManager dnsfallback, IOptions<KeyVaultOptions> secrets, ICloudFlareZoneService zoneService)
+        public CloudFlareDNSClient(HttpClient http, IOptions<KeyVaultOptions> secrets, ICloudFlareZoneService zoneService)
         {
-            this.dnsfallback = dnsfallback;
             this.zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
 
             this.http = http;
@@ -243,12 +256,15 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
 
             if (!string.IsNullOrEmpty(zone))
             {
-                var get = new HttpRequestMessage(HttpMethod.Get, $"https://api.cloudflare.com/client/v4/zones/{zone}/dns_records?type=TXT&name={recordName}");
+                var get = new HttpRequestMessage(HttpMethod.Get, $"https://api.cloudflare.com/client/v4/zones/{zone}/dns_records?type=TXT&name={recordName}.{dnsIdentifier}");
                 get.Headers.Add("X-Auth-Email", authEmail);
                 get.Headers.Add("X-Auth-Key", authKey);
                 var result = await http.SendAsync(get);
                 var resultdata = JToken.Parse(await result.Content.ReadAsStringAsync());
                 var id = resultdata.SelectToken("$.result[0].id")?.ToString();
+
+
+              
 
                 var post = new HttpRequestMessage(string.IsNullOrEmpty(id) ? HttpMethod.Post : HttpMethod.Put,
                     $"https://api.cloudflare.com/client/v4/zones/{zone}/dns_records{(string.IsNullOrEmpty(id) ? "" : $"/{id}")}");
@@ -266,11 +282,32 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
 
                 await Task.Delay(30000);
             }
-            else
-            {
-                await dnsfallback.EnsureTxtRecordCreatedAsync(dnsIdentifier, recordName, recordValue);
-            }
+            //else
+            //{
+            //    await dnsfallback.EnsureTxtRecordCreatedAsync(dnsIdentifier, recordName, recordValue);
+            //}
 
+        }
+
+        public async Task ClearTxtRecordAsync(string dnsIdentifier, string recordName, string recordValue)
+        {
+            var zone = await zoneService.GetZoneIdAsync(dnsIdentifier);
+            if (!string.IsNullOrEmpty(zone))
+            {
+                var get = new HttpRequestMessage(HttpMethod.Get, $"https://api.cloudflare.com/client/v4/zones/{zone}/dns_records?type=TXT&name={recordName}.{dnsIdentifier}");
+                get.Headers.Add("X-Auth-Email", authEmail);
+                get.Headers.Add("X-Auth-Key", authKey);
+                var result = await http.SendAsync(get);
+                var resultdata = JToken.Parse(await result.Content.ReadAsStringAsync());
+                var id = resultdata.SelectToken("$.result[0].id")?.ToString();
+                if (!string.IsNullOrEmpty(id))
+                {
+                    var delete = new HttpRequestMessage(HttpMethod.Delete, $"https://api.cloudflare.com/client/v4/zones/{zone}/dns_records/"+id);
+                    delete.Headers.Add("X-Auth-Email", authEmail);
+                    delete.Headers.Add("X-Auth-Key", authKey);
+                    await http.SendAsync(delete);
+                }
+            }
         }
     }
 
@@ -293,7 +330,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
           
             container.AddScoped<IDnsClient, CloudFlareDNSClient>();
 
-            container.AddScoped<DnsMadeEasyClientCredetials, DnsMadeEasyOptions>();
+          //  container.AddScoped<DnsMadeEasyClientCredetials, DnsMadeEasyOptions>();
             container.AddScoped<LetsEncryptService<AcmeClient>>();
 
             return container;

@@ -27,6 +27,7 @@ using Unity;
 using SInnovations.ServiceFabric.Gateway.Common.Actors;
 using Polly;
 using Polly.Retry;
+using SInnovations.ServiceFabric.GatewayService.Configuration;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
@@ -388,29 +389,29 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             if (await chainBlob.ExistsAsync() && await keyBlob.ExistsAsync())
             {
                 await keyBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{domain1}.key", FileMode.Create);
-
                 await chainBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{domain1}.fullchain.pem", FileMode.Create);
+
                 sb.AppendLine($"\t\tssl_certificate {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{domain1}.fullchain.pem;");
+                sb.AppendLine($"\t\tssl_certificate_key {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{domain1}.key;");
 
+                sb.AppendLine($"\t\tssl_session_timeout  5m;");
+
+                sb.AppendLine($"\t\tssl_prefer_server_ciphers on;");
+                sb.AppendLine($"\t\tssl_protocols TLSv1 TLSv1.1 TLSv1.2;");
+                sb.AppendLine($"\t\tssl_ciphers 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA';");
+                sb.AppendLine($"\t\tadd_header Strict-Transport-Security max-age=15768000;");
+
+
+                return true;
             }
-            else
-            {
-                await GetCertGenerationStateAsync(serverName, serverGroup.Value.First().Ssl, true, token);
 
-                return false;
+
+
+            await GetCertGenerationStateAsync(serverName, serverGroup.Value.First().Ssl, true, token);
+
+            return false;
                
-            }
-
-            sb.AppendLine($"\t\tssl_certificate_key {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{domain1}.key;");
-
-            sb.AppendLine($"\t\tssl_session_timeout  5m;");
-
-            sb.AppendLine($"\t\tssl_prefer_server_ciphers on;");
-            sb.AppendLine($"\t\tssl_protocols TLSv1 TLSv1.1 TLSv1.2;");
-            sb.AppendLine($"\t\tssl_ciphers 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA';");
-            sb.AppendLine($"\t\tadd_header Strict-Transport-Security max-age=15768000;");
-
-            return true;
+             
         }
 
         private static GatewayServiceRegistrationData[] GetUniueGatewayRegistrations(IGrouping<Uri, GatewayServiceRegistrationData> upstreams)
@@ -631,24 +632,30 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         public async Task<CertGenerationState> GetCertGenerationStateAsync(string hostname, SslOptions options, bool force, CancellationToken token)
         {
 
-            var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
-            var ServiceUri = new Uri($"{applicationName}/{nameof(GatewayManagementService)}");
-            var gateway = ServiceProxy.Create<IGatewayManagementService>(
-                ServiceUri, hostname.ToPartitionHashFunction());
-         //   var actorService = ActorServiceProxy.Create<IGatewayServiceManagerActorService>(actorServiceUri, new ActorId(hostname));
 
-            if (!force)
+            try
             {
+                var gateway = GatewayManagementServiceClient.GetProxy<IGatewayManagementService>(
+                    $"{this.Context.CodePackageActivationContext.ApplicationName}/{nameof(GatewayManagementService)}", hostname);
+               
 
-                var state = await gateway.GetCertGenerationInfoAsync(hostname, token);
-                if (state != null && state.RunAt.HasValue && state.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14)))
+                if (!force)
                 {
-                    return state;
+
+                    var state = await gateway.GetCertGenerationInfoAsync(hostname, token);
+                    if (state != null && state.RunAt.HasValue && state.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14)))
+                    {
+                        return state;
+                    }
                 }
+
+
+                await gateway.RequestCertificateAsync(hostname, options, force);
+
+            } catch(Exception ex)
+            {
+                return null;
             }
-
-
-            await gateway.RequestCertificateAsync(hostname, options, force);
            // await ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId(hostname))
 
             //if (options.UseHttp01Challenge)
@@ -731,7 +738,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
             RetryPolicy retryPolicy = Policy
             .Handle<Exception>()            
-            .WaitAndRetryAsync(3, retryAttempt =>
+            .WaitAndRetryAsync(5, retryAttempt =>
               TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
             (exception, timeSpan, context) => {
                 _logger.LogWarning(exception, "Retrying to write config");
