@@ -313,49 +313,27 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
 
                         sb.AppendLine($"\t\tlisten       {endpoint.Port};");
+
+                        var sslsb = new StringBuilder();
+
                         if (sslOn)
                         {
-                            sb.AppendLine($"\t\tlisten       {sslEndpoint.Port} ssl;");
+                            sslsb.AppendLine($"\t\tlisten       {sslEndpoint.Port} ssl;");
+                            sslsb.AppendLine($"\t\tserver_name  {serverName};");
+                            sslsb.AppendLine();
+
+                            sslOn = await SetupSsl(sslsb, serverGroup, serverName, token);
                         }
+                         
 
-                        sb.AppendLine($"\t\tserver_name  {serverName};");
-                        sb.AppendLine();
-
-                        if (sslOn)
+                        if(sslOn)
                         {
-
-                            var certs = storageAccount.CreateCloudBlobClient().GetContainerReference("certs");
-
-                            var certBlob = certs.GetBlockBlobReference($"{serverName}.crt");
-                            var keyBlob = certs.GetBlockBlobReference($"{serverName}.key");
-                            var chainBlob = certs.GetBlockBlobReference($"{serverName}.fullchain.pem");
-
-                            Directory.CreateDirectory(Path.Combine(Context.CodePackageActivationContext.WorkDirectory, "letsencrypt"));
-
-                            await keyBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{serverName}.key", FileMode.Create);
-
-                            if (await chainBlob.ExistsAsync())
-                            {
-                                await chainBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{serverName}.fullchain.pem", FileMode.Create);
-                                sb.AppendLine($"\t\tssl_certificate {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{serverName}.fullchain.pem;");
-
-                            }
-                            else
-                            {
-                                await GetCertGenerationStateAsync(serverName, serverGroup.Value.First().Ssl, true, token);
-                                await certBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{serverName}.crt", FileMode.Create);
-                                sb.AppendLine($"\t\tssl_certificate {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{serverName}.crt;");
-                            }
-
-                            sb.AppendLine($"\t\tssl_certificate_key {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{serverName}.key;");
-
-                            sb.AppendLine($"\t\tssl_session_timeout  5m;");
-
-                            sb.AppendLine($"\t\tssl_prefer_server_ciphers on;");
-                            sb.AppendLine($"\t\tssl_protocols TLSv1 TLSv1.1 TLSv1.2;");
-                            sb.AppendLine($"\t\tssl_ciphers 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA';");
-                            sb.AppendLine($"\t\tadd_header Strict-Transport-Security max-age=15768000;");
-
+                            sb.AppendLine(sslOn.ToString());
+                        }
+                        else
+                        {
+                            sb.AppendLine($"\t\tserver_name  {serverName};");
+                            sb.AppendLine();
                         }
 
 
@@ -392,6 +370,44 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             sb.AppendLine("}");
 
             File.WriteAllText("nginx.conf", sb.ToString());
+        }
+
+        private async Task<bool> SetupSsl(StringBuilder sb, KeyValuePair<string, List<GatewayServiceRegistrationData>> serverGroup, string serverName, CancellationToken token)
+        {
+            var certs = storageAccount.CreateCloudBlobClient().GetContainerReference("certs");
+
+            var certBlob = certs.GetBlockBlobReference($"{serverName}.crt");
+            var keyBlob = certs.GetBlockBlobReference($"{serverName}.key");
+            var chainBlob = certs.GetBlockBlobReference($"{serverName}.fullchain.pem");
+
+            Directory.CreateDirectory(Path.Combine(Context.CodePackageActivationContext.WorkDirectory, "letsencrypt"));
+
+            await keyBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{serverName}.key", FileMode.Create);
+
+            if (await chainBlob.ExistsAsync())
+            {
+                await chainBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{serverName}.fullchain.pem", FileMode.Create);
+                sb.AppendLine($"\t\tssl_certificate {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{serverName}.fullchain.pem;");
+
+            }
+            else
+            {
+                await GetCertGenerationStateAsync(serverName, serverGroup.Value.First().Ssl, true, token);
+
+                return false;
+               
+            }
+
+            sb.AppendLine($"\t\tssl_certificate_key {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{serverName}.key;");
+
+            sb.AppendLine($"\t\tssl_session_timeout  5m;");
+
+            sb.AppendLine($"\t\tssl_prefer_server_ciphers on;");
+            sb.AppendLine($"\t\tssl_protocols TLSv1 TLSv1.1 TLSv1.2;");
+            sb.AppendLine($"\t\tssl_ciphers 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA';");
+            sb.AppendLine($"\t\tadd_header Strict-Transport-Security max-age=15768000;");
+
+            return true;
         }
 
         private static GatewayServiceRegistrationData[] GetUniueGatewayRegistrations(IGrouping<Uri, GatewayServiceRegistrationData> upstreams)
