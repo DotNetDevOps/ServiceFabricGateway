@@ -699,7 +699,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 partitions.Select(partition => 
                 ServiceProxy.Create<IGatewayManagementService>(actorServiceUri, new ServicePartitionKey(partition)).GetLastUpdatedAsync(token)));
 
-            return updated.Max(v=>v.GetValueOrDefault());
+            return updated.DefaultIfEmpty().Max(v=>v.GetValueOrDefault());
             
            
         }

@@ -485,7 +485,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
             var certs = await GetGatewayCertificatesAsync(token);
             var proxies = await GetGatewayServicesAsync(token);
 
-            return certs.Select(c => c.RunAt.GetValueOrDefault()).Concat(proxies.Select(p => p.Time)).Max();
+            return certs.Select(c => c.RunAt.GetValueOrDefault()).Concat(proxies.Select(p => p.Time)).DefaultIfEmpty().Max();
  
         }
 
@@ -516,7 +516,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
         }
     }
 
+    public static class MaxOrDefaultEx
+    {
 
+    }
 
 
     //    /// <remarks>
