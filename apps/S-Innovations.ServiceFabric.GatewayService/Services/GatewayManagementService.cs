@@ -902,13 +902,21 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                         using (var tx = this.StateManager.CreateTransaction())
                         {
-                            logger.LogInformation("Cleaning out {gateway}", $"{data.Key}-{data.IPAddressOrFQDN}");
-                            var cleaned = await proxies.TryRemoveAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
-                            if (cleaned.HasValue)
+                            if (await proxies.ContainsKeyAsync(tx,$"{data.Key}-{data.IPAddressOrFQDN}"))
                             {
-                                logger.LogInformation("Cleaned out {@gateway}", cleaned.Value);
-                                _lastUpdated = DateTimeOffset.UtcNow;
-                                await tx.CommitAsync();
+                                logger.LogInformation("Cleaning out {gateway}", $"{data.Key}-{data.IPAddressOrFQDN}");
+
+                                var cleaned = await proxies.TryRemoveAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
+                                if (cleaned.HasValue)
+                                {
+                                    logger.LogInformation("Cleaned out {@gateway}", cleaned.Value);
+                                    _lastUpdated = DateTimeOffset.UtcNow;
+                                    await tx.CommitAsync();
+                                }
+                            }
+                            else
+                            {
+                                logger.LogInformation("{gateway} was already removed", $"{data.Key}-{data.IPAddressOrFQDN}");
                             }
 
 
@@ -940,8 +948,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             {
                 var partitionInformation = partition.PartitionInformation as Int64RangePartitionInformation;
 
+              
+
                 await GatewayManagementServiceClient.GetProxy<IServiceNotificationService>(this.Context.ServiceName, new ServicePartitionKey(partitionInformation.LowKey))
                     .ClearProxyAsync(notification.ServiceName.AbsoluteUri,string.Join(",", endpoints));
+
 
             }
 
