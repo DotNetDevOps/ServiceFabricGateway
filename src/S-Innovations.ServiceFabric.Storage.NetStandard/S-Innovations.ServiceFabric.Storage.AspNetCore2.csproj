@@ -30,7 +30,7 @@
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.AzureStorage" Version="2.0.2" />
     <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="3.19.2" />
     <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="1.0.0-pre-2018040101" />
-    <PackageReference Include="WindowsAzure.Storage" Version="9.1.0" />
+    <PackageReference Include="WindowsAzure.Storage" Version="9.1.1" />
   </ItemGroup>
   
 </Project>
