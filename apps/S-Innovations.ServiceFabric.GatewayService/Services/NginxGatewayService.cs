@@ -645,7 +645,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             }
 
 
-            await gateway.RequestCertificateAsync(hostname, options);
+            await gateway.RequestCertificateAsync(hostname, options, force);
            // await ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId(hostname))
 
             //if (options.UseHttp01Challenge)
