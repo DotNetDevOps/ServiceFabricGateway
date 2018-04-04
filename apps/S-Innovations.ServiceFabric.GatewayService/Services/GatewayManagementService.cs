@@ -40,6 +40,7 @@ using SInnovations.LetsEncrypt.Stores;
 using SInnovations.LetsEncrypt.Services;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
+using Newtonsoft.Json.Linq;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
@@ -96,6 +97,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         Task<string> GetRemoteLocationAsync(string topLevelDomain);
         Task ClearOrderAsync(string topLevelDomain);
         Task SetRemoteLocationAsync(string domain, string location);
+    }
+    public class EndpointsModel
+    {
+        public Dictionary<string,string> Endpoints { get; set; }
+
     }
     public sealed class GatewayManagementService : StatefulService,
         IGatewayManagementService, ICloudFlareZoneService, IServiceFabricIOrdersService, IServiceFabricIRS256SignerStore
@@ -773,7 +779,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                                                           // MatchPrimaryChangeOnly = true
                           };
 
-                              fabricClient.ServiceManager.ServiceNotificationFilterMatched += (s, e) => OnNotification(e);
+                              fabricClient.ServiceManager.ServiceNotificationFilterMatched +=  OnNotification;
 
                               return fabricClient.ServiceManager.RegisterServiceNotificationFilterAsync(filterDescription).GetAwaiter().GetResult();
                           });
@@ -791,7 +797,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             }
             logger.LogInformation("End Registering gateway service {key}", data.Key);
         }
-        private async void OnNotification(EventArgs e)
+        private void OnNotification(object sender, EventArgs e)
         {
            // var fabricClient = new FabricClient();
            // fabricClient.ServiceManager.GetServiceDescriptionAsync(new Uri("")).Result.
@@ -805,32 +811,40 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             var notification = castedEventArgs.Notification;
             //castedEventArgs.Notification.Endpoints.First();
 
-            var gateways = await GetGatewayServicesAsync(CancellationToken.None);
-            var filtered = gateways.Where(p => p.ServiceName == notification.ServiceName);
-            var proxies = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, GatewayServiceRegistrationData>>(STATE_PROXY_DATA_NAME);
-
-            foreach (var data in filtered)
+            GatewayManagementServiceClient.TimeOutRetry.ExecuteAsync(async () =>
             {
-                logger.LogInformation("Looking for {service} with endpoint {endpoint} in {@endpoints}" ,data.ServiceName,data.BackendPath,notification.Endpoints);
 
-                if (!notification.Endpoints.Any(en=>en.Address == data.BackendPath))
+                var gateways = await GetGatewayServicesAsync(CancellationToken.None);
+                var filtered = gateways.Where(p => p.ServiceName == notification.ServiceName);
+                var proxies = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, GatewayServiceRegistrationData>>(STATE_PROXY_DATA_NAME);
+
+                foreach (var data in filtered)
                 {
-                    using (var tx = this.StateManager.CreateTransaction())
+                    var endpoints = notification.Endpoints.SelectMany(en => JToken.Parse(en.Address).ToObject<EndpointsModel>().Endpoints.Values).ToArray();
+
+                    logger.LogInformation("Looking for {service} with endpoint {endpoint} in {@endpoints} {@parsedEndpoints}", data.ServiceName, data.BackendPath, notification.Endpoints, endpoints);
+
+                    
+
+                    if (!endpoints.Any(en => en == data.BackendPath))
                     {
-                        logger.LogInformation("Cleaning out {gateway}", $"{data.Key}-{data.IPAddressOrFQDN}");
-                        var cleaned=await proxies.TryRemoveAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
-                        if (cleaned.HasValue)
+                        using (var tx = this.StateManager.CreateTransaction())
                         {
-                            logger.LogInformation("Cleaned out {@gateway}", cleaned.Value);
-                            _lastUpdated = DateTimeOffset.UtcNow;
+                            logger.LogInformation("Cleaning out {gateway}", $"{data.Key}-{data.IPAddressOrFQDN}");
+                            var cleaned = await proxies.TryRemoveAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
+                            if (cleaned.HasValue)
+                            {
+                                logger.LogInformation("Cleaned out {@gateway}", cleaned.Value);
+                                _lastUpdated = DateTimeOffset.UtcNow;
+                                await tx.CommitAsync();
+                            }
+                         
+
+
                         }
-                        await tx.CommitAsync();
-
-
                     }
                 }
-            }
-
+            }).Wait();
 
 
                 //Console.WriteLine(
