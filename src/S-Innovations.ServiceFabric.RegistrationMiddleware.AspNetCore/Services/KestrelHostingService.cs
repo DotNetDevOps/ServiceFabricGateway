@@ -1,5 +1,4 @@
-﻿using Microsoft.ApplicationInsights.Channel;
-using Microsoft.ApplicationInsights.Extensibility;
+﻿using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.ServiceFabric;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -7,8 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Unity;
-using Microsoft.ServiceFabric.Actors;
-using Microsoft.ServiceFabric.Actors.Client;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Runtime;
 using Serilog;
@@ -31,10 +28,7 @@ using Unity.Lifetime;
 using Unity.Injection;
 using Microsoft.ApplicationInsights.ServiceFabric.Module;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
-using System.Security.Cryptography;
-using System.Text;
-using Microsoft.ServiceFabric.Services.Client;
-using SInnovations.ServiceFabric.Gateway.Common.Actors;
+using SInnovations.ServiceFabric.Gateway.Common.Extensions;
 #if NETCORE20
 using Unity.Microsoft.DependencyInjection;
 #endif
@@ -47,7 +41,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
     //    private ITelemetryProcessor Next { get; set; }
 
-    
+
 
     //    public AzureRegion(ITelemetryProcessor next,string str)
     //    {
@@ -93,7 +87,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
     //    //    return (IP_addr, CIDR_mask);
     //    //}
 
-       
+
 
     //    public void Process(ITelemetry item)
     //    {
@@ -107,7 +101,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
     //        {
 
     //        }
-            
+
     //        this.Next.Process(item);
     //    }
     //}

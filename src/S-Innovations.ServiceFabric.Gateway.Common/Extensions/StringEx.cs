@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 //[assembly: FabricTransportServiceRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
 
 
-namespace SInnovations.ServiceFabric.Gateway.Common.Actors
+namespace SInnovations.ServiceFabric.Gateway.Common.Extensions
 {
     //public interface IGatewayServiceManagerActorService : IService
     //{

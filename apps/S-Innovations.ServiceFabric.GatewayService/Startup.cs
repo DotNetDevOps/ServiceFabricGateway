@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.ServiceFabric.Actors;
-using Microsoft.ServiceFabric.Actors.Client;
 using Microsoft.ServiceFabric.Services.Client;
 using Microsoft.ServiceFabric.Services.Communication.Client;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
@@ -14,15 +12,14 @@ using Newtonsoft.Json.Linq;
 using SInnovations.ServiceFabric.Gateway.Actors;
 using SInnovations.ServiceFabric.Gateway.Communication;
 using SInnovations.ServiceFabric.Gateway.Model;
-using SInnovations.ServiceFabric.GatewayService.Actors;
 using SInnovations.ServiceFabric.GatewayService.Services;
 using System;
 using System.Collections.Generic;
 using System.Fabric;
 using System.Linq;
 using System.Threading.Tasks;
-using SInnovations.ServiceFabric.Gateway.Common.Actors;
 using Unity;
+using SInnovations.ServiceFabric.Gateway.Common.Extensions;
 
 //[assembly: FabricTransportServiceRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
 //[assembly: FabricTransportActorRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]

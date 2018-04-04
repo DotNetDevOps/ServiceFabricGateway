@@ -41,6 +41,7 @@ using SInnovations.LetsEncrypt.Services;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 using Newtonsoft.Json.Linq;
+using Microsoft.ServiceFabric.Services.Client;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
@@ -107,6 +108,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
     public interface IServiceNotificationService:IService
     {
         Task RegisterServiceNotification(string  serviceName);
+        Task ClearProxyAsync(string serviceUri,string[] endpoints);
     }
     public sealed class GatewayManagementService : StatefulService,
         IGatewayManagementService, ICloudFlareZoneService, IServiceFabricIOrdersService, IServiceFabricIRS256SignerStore, IServiceNotificationService
@@ -147,29 +149,42 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         {
             return this.CreateServiceRemotingReplicaListeners();
         }
+        protected override Task OnChangeRoleAsync(ReplicaRole newRole, CancellationToken cancellationToken)
+        {
+            logger.LogInformation("changing role to {newRole}",newRole);
+
+            return base.OnChangeRoleAsync(newRole, cancellationToken);
+        }
 
         protected override async Task RunAsync(CancellationToken cancellationToken)
         {
             logger.LogInformation("Running Gatway Management Service");
-            await Task.Delay(TimeSpan.FromMinutes(2));
 
-            StorageAccount = await storage.GetApplicationStorageAccountAsync();
 
             var certs = await StateManager.GetOrAddAsync<IReliableDictionary<string, CertGenerationState>>(STATE_CERTS_DATA_NAME);
             var store = await StateManager.GetOrAddAsync<IReliableQueue<string>>(STATE_CERTS_QUEUE_DATA_NAME).ConfigureAwait(false);
+
+
+            StorageAccount = await storage.GetApplicationStorageAccountAsync();
+             
             var certContainer = StorageAccount.CreateCloudBlobClient().GetContainerReference("certs");
             await certContainer.CreateIfNotExistsAsync();
 
 
 
-            var gateways = await GetGatewayServicesAsync(cancellationToken);
-            foreach(var gateway in gateways)
+            var gateways = await GatewayManagementServiceClient.TimeOutRetry.ExecuteAsync(GetGatewayServicesAsync, cancellationToken);
+             
+            foreach (var gateway in gateways)
             {
                 try
-                {
+                { 
+                    await GatewayManagementServiceClient.TimeOutRetry.ExecuteAsync(async () =>
+                    {
 
-                    await GatewayManagementServiceClient.GetProxy<IServiceNotificationService>(this.Context.ServiceName.AbsoluteUri, gateway.ServiceName.AbsoluteUri)
+                        await GatewayManagementServiceClient.GetProxy<IServiceNotificationService>(this.Context.ServiceName.AbsoluteUri, gateway.ServiceName.AbsoluteUri)
                         .RegisterServiceNotification(gateway.ServiceName.AbsoluteUri);
+
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -861,7 +876,46 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
            
         }
 
-        private void OnNotification(object sender, EventArgs e)
+        public async Task ClearProxyAsync(string ServiceNameUri, string[] endpoints)
+        {
+            var ServiceName = new Uri(ServiceNameUri);
+            await GatewayManagementServiceClient.TimeOutRetry.ExecuteAsync(async () =>
+            {
+
+                var gateways = await GetGatewayServicesAsync(CancellationToken.None);
+                var filtered = gateways.Where(p => p.ServiceName == ServiceName);
+                var proxies = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, GatewayServiceRegistrationData>>(STATE_PROXY_DATA_NAME);
+
+                foreach (var data in filtered)
+                {
+//                    var endpoints = notification.Endpoints.SelectMany(en => JToken.Parse(en.Address).ToObject<EndpointsModel>().Endpoints.Values).ToArray();
+
+                    logger.LogInformation("Looking for {service} with endpoint {endpoint} in {@parsedEndpoints}", data.ServiceName, data.BackendPath, endpoints);
+
+
+
+                    if (!endpoints.Any(en => en == data.BackendPath))
+                    { 
+
+                        using (var tx = this.StateManager.CreateTransaction())
+                        {
+                            logger.LogInformation("Cleaning out {gateway}", $"{data.Key}-{data.IPAddressOrFQDN}");
+                            var cleaned = await proxies.TryRemoveAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
+                            if (cleaned.HasValue)
+                            {
+                                logger.LogInformation("Cleaned out {@gateway}", cleaned.Value);
+                                _lastUpdated = DateTimeOffset.UtcNow;
+                                await tx.CommitAsync();
+                            }
+
+
+
+                        }
+                    }
+                }
+            });
+        }
+        private async void OnNotification(object sender, EventArgs e)
         {
            // var fabricClient = new FabricClient();
            // fabricClient.ServiceManager.GetServiceDescriptionAsync(new Uri("")).Result.
@@ -875,46 +929,26 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             var notification = castedEventArgs.Notification;
             //castedEventArgs.Notification.Endpoints.First();
 
-            GatewayManagementServiceClient.TimeOutRetry.ExecuteAsync(async () =>
+            var endpoints = notification.Endpoints.SelectMany(en => JToken.Parse(en.Address).ToObject<EndpointsModel>().Endpoints.Values).ToArray();
+
+            //Loop over all partitions to clean up
+            var partitions = await fabricClient.QueryManager.GetPartitionListAsync(this.Context.ServiceName);
+            foreach(var partition in partitions)
             {
+                var partitionInformation = partition.PartitionInformation as Int64RangePartitionInformation;
 
-                var gateways = await GetGatewayServicesAsync(CancellationToken.None);
-                var filtered = gateways.Where(p => p.ServiceName == notification.ServiceName);
-                var proxies = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, GatewayServiceRegistrationData>>(STATE_PROXY_DATA_NAME);
+                await GatewayManagementServiceClient.GetProxy<IServiceNotificationService>(this.Context.ServiceName, new ServicePartitionKey(partitionInformation.LowKey))
+                    .ClearProxyAsync(notification.ServiceName.AbsoluteUri,endpoints);
 
-                foreach (var data in filtered)
-                {
-                    var endpoints = notification.Endpoints.SelectMany(en => JToken.Parse(en.Address).ToObject<EndpointsModel>().Endpoints.Values).ToArray();
+            }
 
-                    logger.LogInformation("Looking for {service} with endpoint {endpoint} in {@endpoints} {@parsedEndpoints}", data.ServiceName, data.BackendPath, notification.Endpoints, endpoints);
-
-                    
-
-                    if (!endpoints.Any(en => en == data.BackendPath))
-                    {
-                        using (var tx = this.StateManager.CreateTransaction())
-                        {
-                            logger.LogInformation("Cleaning out {gateway}", $"{data.Key}-{data.IPAddressOrFQDN}");
-                            var cleaned = await proxies.TryRemoveAsync(tx, $"{data.Key}-{data.IPAddressOrFQDN}", GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
-                            if (cleaned.HasValue)
-                            {
-                                logger.LogInformation("Cleaned out {@gateway}", cleaned.Value);
-                                _lastUpdated = DateTimeOffset.UtcNow;
-                                await tx.CommitAsync();
-                            }
-                         
+            
 
 
-                        }
-                    }
-                }
-            }).Wait();
-
-
-                //Console.WriteLine(
-                //    "[{0}] received notification for service '{1}'",
-                //    DateTime.UtcNow,
-                //    notification.ServiceName);
+            //Console.WriteLine(
+            //    "[{0}] received notification for service '{1}'",
+            //    DateTime.UtcNow,
+            //    notification.ServiceName);
         }
         public async Task RequestCertificateAsync(string hostname, SslOptions options, bool force)
         {

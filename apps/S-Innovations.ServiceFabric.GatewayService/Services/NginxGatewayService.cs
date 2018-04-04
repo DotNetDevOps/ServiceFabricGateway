@@ -1,15 +1,16 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.ServiceFabric.Actors;
-using Microsoft.ServiceFabric.Actors.Client;
 using Microsoft.ServiceFabric.Services.Client;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using Microsoft.WindowsAzure.Storage;
+using Newtonsoft.Json;
+using Polly;
+using Polly.Retry;
 using SInnovations.ServiceFabric.Gateway.Actors;
 using SInnovations.ServiceFabric.Gateway.Common.Model;
 using SInnovations.ServiceFabric.Gateway.Model;
-using SInnovations.ServiceFabric.GatewayService.Actors;
+using SInnovations.ServiceFabric.GatewayService.Configuration;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services;
 using SInnovations.ServiceFabric.Storage.Configuration;
@@ -20,17 +21,13 @@ using System.Fabric;
 using System.Fabric.Description;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity;
-using SInnovations.ServiceFabric.Gateway.Common.Actors;
-using Polly;
-using Polly.Retry;
-using SInnovations.ServiceFabric.GatewayService.Configuration;
-using System.Net.Http;
-using System.Security.Cryptography;
-using Newtonsoft.Json;
+using SInnovations.ServiceFabric.Gateway.Common.Extensions;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {

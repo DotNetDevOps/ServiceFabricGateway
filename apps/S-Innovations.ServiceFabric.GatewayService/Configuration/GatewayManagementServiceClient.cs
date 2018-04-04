@@ -2,12 +2,13 @@
 using System.Fabric;
 using Microsoft.ServiceFabric.Services.Remoting;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
-using SInnovations.ServiceFabric.Gateway.Common.Actors;
+using SInnovations.ServiceFabric.Gateway.Common.Extensions;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using Microsoft.ServiceFabric.Services.Remoting.FabricTransport;
 using Polly.Retry;
 using Polly;
 using SInnovations.ServiceFabric.GatewayService.Services;
+using Microsoft.ServiceFabric.Services.Client;
 
 namespace SInnovations.ServiceFabric.GatewayService.Configuration
 {
@@ -54,6 +55,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
         protected T GetProxy<T>(string partition) where T:IService => CreateProxyFactoryFabricTransport().CreateServiceProxy<T>(new Uri($"{codePackageActivationContext.ApplicationName}/{nameof(GatewayManagementService)}"), partition.ToPartitionHashFunction());
 
         public static T GetProxy<T>(string service,string partition) where T : IService => CreateProxyFactoryFabricTransport().CreateServiceProxy<T>(new Uri(service), partition.ToPartitionHashFunction());
+        public static T GetProxy<T>(Uri service, ServicePartitionKey partition) where T : IService => CreateProxyFactoryFabricTransport().CreateServiceProxy<T>(service, partition);
 
 
         public static IServiceProxyFactory CreateProxyFactoryFabricTransport()
