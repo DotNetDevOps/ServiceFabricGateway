@@ -795,6 +795,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 logger.LogWarning(ex, "Throwing in Registering gateway service {key}", data.Key);
                 throw;
             }
+            _lastUpdated = DateTimeOffset.UtcNow;
             logger.LogInformation("End Registering gateway service {key}", data.Key);
         }
         private void OnNotification(object sender, EventArgs e)
