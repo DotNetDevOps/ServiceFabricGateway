@@ -486,7 +486,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     var ipsv4 = await http.GetStringAsync("https://www.cloudflare.com/ips-v4");
                     var ipsv6 = await http.GetStringAsync("https://www.cloudflare.com/ips-v6");
                     var breaks = new[] { "\r\n", "\r", "\n" };
-                    foreach (var line in ipsv4.Split(breaks ,   StringSplitOptions.None).Concat(ipsv6.Split(breaks, StringSplitOptions.None)))
+                    foreach (var line in ipsv4
+                        .Split(breaks ,   StringSplitOptions.None)
+                        .Concat(ipsv6.Split(breaks, StringSplitOptions.None))
+                        .Where(s=>!string.IsNullOrWhiteSpace(s)))
                     {
                         sb.AppendLine($"{tabs}set_real_ip_from  {line};");
                     }

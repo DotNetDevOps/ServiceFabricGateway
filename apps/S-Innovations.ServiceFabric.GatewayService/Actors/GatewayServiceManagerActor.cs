@@ -116,7 +116,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Actors
                         var itemFromQueue = await store.TryDequeueAsync(tx).ConfigureAwait(false);
                         if (!itemFromQueue.HasValue)
                         {
-                            await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken).ConfigureAwait(false);
+                            await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
                             continue;
                         }
 
