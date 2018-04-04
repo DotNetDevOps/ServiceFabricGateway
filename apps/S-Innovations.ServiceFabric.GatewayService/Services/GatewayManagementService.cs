@@ -105,10 +105,12 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
     }
 
+
+ 
     public interface IServiceNotificationService:IService
     {
         Task RegisterServiceNotification(string  serviceName);
-        Task ClearProxyAsync(string serviceUri,string[] endpoints);
+        Task ClearProxyAsync(string serviceUri, string endpoints);
     }
     public sealed class GatewayManagementService : StatefulService,
         IGatewayManagementService, ICloudFlareZoneService, IServiceFabricIOrdersService, IServiceFabricIRS256SignerStore, IServiceNotificationService
@@ -876,8 +878,9 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
            
         }
 
-        public async Task ClearProxyAsync(string ServiceNameUri, string[] endpoints)
+        public async Task ClearProxyAsync(string ServiceNameUri, string endpointsArray)
         {
+            var endpoints = endpointsArray.Split(',');
             var ServiceName = new Uri(ServiceNameUri);
             await GatewayManagementServiceClient.TimeOutRetry.ExecuteAsync(async () =>
             {
@@ -938,7 +941,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 var partitionInformation = partition.PartitionInformation as Int64RangePartitionInformation;
 
                 await GatewayManagementServiceClient.GetProxy<IServiceNotificationService>(this.Context.ServiceName, new ServicePartitionKey(partitionInformation.LowKey))
-                    .ClearProxyAsync(notification.ServiceName.AbsoluteUri,endpoints);
+                    .ClearProxyAsync(notification.ServiceName.AbsoluteUri,string.Join(",", endpoints));
 
             }
 
