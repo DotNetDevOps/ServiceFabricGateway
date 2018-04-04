@@ -264,7 +264,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
 
                             ConfigureBuilder(builder);
-
+                          
                             return builder.UseUrls(url).Build();
 
                             }catch(Exception ex)
