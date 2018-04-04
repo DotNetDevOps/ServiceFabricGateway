@@ -16,7 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\apps\S-Innovations.ServiceFabric.GatewayService\S-Innovations.ServiceFabric.GatewayService.csproj" />
     <ProjectReference Include="..\..\src\S-Innovations.ServiceFabric.Gateway.Common\S-Innovations.ServiceFabric.Gateway.Common.csproj" />
     <ProjectReference Include="..\..\src\S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore2\S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore2.csproj" />
     <ProjectReference Include="..\..\src\S-Innovations.ServiceFabric.Storage.NetStandard\S-Innovations.ServiceFabric.Storage.AspNetCore2.csproj" />
