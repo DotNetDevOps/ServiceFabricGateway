@@ -583,7 +583,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 var additionals = (string[])gatewayServiceRegistrationData.Properties["nginx-locations"];
                 foreach (var extra in additionals)
                 {
-                    sb_outer.AppendLine($"{string.Join("", Enumerable.Range(0, level).Select(r => "\t"))}location {location} {{");
+                    sb_outer.AppendLine($"{string.Join("", Enumerable.Range(0, level).Select(r => "\t"))}location {extra} {{");
                     {
                         var path = $"conf/{ToGuid(location + gatewayServiceRegistrationData?.Key)}.conf";
                         sb_outer.AppendLine($"{tabs}include {Path.GetFullPath(path)};");
