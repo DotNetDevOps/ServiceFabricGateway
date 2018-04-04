@@ -578,7 +578,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             sb_outer.AppendLine($"{string.Join("", Enumerable.Range(0, level).Select(r => "\t"))}}}");
 
 
-            if(gatewayServiceRegistrationData.Properties?.ContainsKey("nginx-locations") ?? false)
+            if(gatewayServiceRegistrationData?.Properties?.ContainsKey("nginx-locations") ?? false)
             {
                 var additionals = (string[])gatewayServiceRegistrationData.Properties["nginx-prefixes"];
                 foreach (var extra in additionals)
