@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Application xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Name="fabric:/S-Innovations.ServiceFabric.GatewayApplication" xmlns="http://schemas.microsoft.com/2011/01/fabric">
+  <Parameters>
+    <Parameter Name="GatewayService_InstanceCount" Value="-1" />
+    <Parameter Name="AzureADServicePrincipal" Value="" />
+    <Parameter Name="AzureResourceManagerCertThumbrint" Value="EB6768C258FE021993C5A3ECEAE848DC413984A8" />
+    <Parameter Name="TenantId" Value="0840c760-6f7b-4556-b337-8c090e2d458d" />
+    <Parameter Name="ApplicationStorageAccountId" Value="/subscriptions/4c6c1ea4-3605-4411-a44e-b65382627f5b/resourceGroups/sf-1709-3/providers/Microsoft.Storage/storageAccounts/kb4mubyphszxe3" />
+    <Parameter Name="Azure.KeyVault.Uri" Value="https://sf-1709-3.vault.azure.net/" />
+    <Parameter Name="GatewayServerName" Value="sf-1709-3.westeurope.cloudapp.azure.com" />
+    <Parameter Name="GatewayReverseProxyLocation" Value="/gateway/" />
+    <Parameter Name="GatewaySslOptions" Value="{'Enabled':true,'SignerEmail':'info@earthml.com','UseHttp01Challenge':true}" />
+    <Parameter Name="GatewayProperties" Value="{}" />
+    <Parameter Name="APPLICATION_INSIGHTS" Value="bfc37bf1-467d-49c1-811d-8f6b0ca6081f" />
+  </Parameters>
+</Application>

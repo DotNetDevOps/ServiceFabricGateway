@@ -21,7 +21,9 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
 
         public CertHttpChallengeInfo SetLocation(string location)
         {
-            return new CertHttpChallengeInfo { Location = location, Token = Token, KeyAuthString = KeyAuthString };
+            Location = location;
+            return Clone();
+          
         }
         private ExtensionDataObject theData;
 
@@ -30,6 +32,13 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
             get { return theData; }
             set { theData = value; }
         }
+
+        
+        public CertHttpChallengeInfo Clone()
+        {
+            return new CertHttpChallengeInfo { Location = Location, Token = Token, KeyAuthString = KeyAuthString, ExtensionData=ExtensionData};
+        }
+
     }
     [DataContract]
     public class CertGenerationState: IExtensibleDataObject
@@ -59,15 +68,10 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
 
         public CertGenerationState Complete()
         {
-            return new CertGenerationState
-            {
-                Completed = true,
-                HostName = HostName,
-                SslOptions = new SslOptions { Enabled = SslOptions.Enabled, SignerEmail = SslOptions.SignerEmail, UseHttp01Challenge = SslOptions.UseHttp01Challenge },
-                RunAt = DateTimeOffset.UtcNow,
-                HttpChallengeInfo = HttpChallengeInfo,
-                Counter=Counter
-            };
+            this.Completed = true;
+            this.RunAt = DateTimeOffset.UtcNow;
+            return Clone();
+          
         }
         [DataMember]
         public string HostName { get; set; }
@@ -77,6 +81,8 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
         public DateTimeOffset? RunAt { get; private set; }
         [DataMember]
         public CertHttpChallengeInfo HttpChallengeInfo { get; private set; }
+        [DataMember]
+        public string OrderLocation { get; private set; }
 
         public CertGenerationState SetCertHttpChallengeLocation(string location)
         {
@@ -85,26 +91,35 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
         }
         public CertGenerationState SetCertHttpChallengeInfo(CertHttpChallengeInfo certHttpChallengeInfo)
         {
-            return new CertGenerationState
-            {
-                Completed = Completed,
-                HostName = HostName,
-                SslOptions = new SslOptions { Enabled = SslOptions.Enabled, SignerEmail = SslOptions.SignerEmail, UseHttp01Challenge = SslOptions.UseHttp01Challenge },
-                RunAt = RunAt,
-                HttpChallengeInfo = certHttpChallengeInfo
-            };
+            HttpChallengeInfo = certHttpChallengeInfo;
+            return Clone();
         }
 
         public CertGenerationState Increment()
+        {
+            Counter += 1;
+            return Clone();
+           
+        }
+
+        public CertGenerationState SetOrderLocation(string absoluteUri)
+        {
+            this.OrderLocation = absoluteUri;
+            return Clone();
+            
+             
+        }
+
+        public CertGenerationState Clone()
         {
             return new CertGenerationState
             {
                 Completed = Completed,
                 HostName = HostName,
                 SslOptions = new SslOptions { Enabled = SslOptions.Enabled, SignerEmail = SslOptions.SignerEmail, UseHttp01Challenge = SslOptions.UseHttp01Challenge },
-                RunAt = DateTimeOffset.UtcNow,
-                HttpChallengeInfo = HttpChallengeInfo, 
-                Counter = Counter+1
+                RunAt = RunAt,
+                HttpChallengeInfo = HttpChallengeInfo?.Clone(),
+                OrderLocation = OrderLocation, Counter=Counter, ExtensionData = ExtensionData
             };
         }
     }

@@ -80,7 +80,7 @@ namespace SInnovations.ServiceFabric.GatewayService
                          logConfiguration.MinimumLevel.Debug()
                          .Enrich.FromLogContext()
                          .WriteTo.LiterateConsole(outputTemplate: "[{Timestamp:HH:mm:ss} {Level}] {SourceContext}{NewLine}{Message}{NewLine}{Exception}{NewLine}")
-                         .WriteTo.ApplicationInsightsTraces("10e77ea7-1d38-40f7-901c-ef3c2e7d48ef", Serilog.Events.LogEventLevel.Warning));
+                         .WriteTo.ApplicationInsightsTraces(Environment.GetEnvironmentVariable("APPLICATION_INSIGHTS"), Serilog.Events.LogEventLevel.Information));
 
 
 

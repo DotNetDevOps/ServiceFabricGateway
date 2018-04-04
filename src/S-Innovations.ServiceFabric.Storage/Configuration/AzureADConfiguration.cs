@@ -98,8 +98,12 @@ namespace SInnovations.ServiceFabric.Storage.Configuration
             {
                 var section = _config.Settings.Sections["AzureResourceManager"].Parameters;
                 var http = new HttpClient();
-                var tokenresponse = await http.GetStringAsync($"http://localhost:{section["AzureADMSIPort"].Value}/oauth2/token?resource={resource}");
-                return JToken.Parse(tokenresponse).SelectToken("$.access_token").ToString();
+                var req = new HttpRequestMessage(HttpMethod.Get, $"http://localhost:{section["AzureADMSIPort"].Value}/oauth2/token?resource={resource}");
+                req.Headers.TryAddWithoutValidation("Metadata", "true");
+
+                var tokenresponse = await http.SendAsync(req);
+
+                return JToken.Parse(await tokenresponse.Content.ReadAsStringAsync()).SelectToken("$.access_token").ToString();
 
             }
 
@@ -121,8 +125,12 @@ namespace SInnovations.ServiceFabric.Storage.Configuration
             if (UseMSI)
             {
                 var http = new HttpClient();
-                var tokenresponse = await http.GetStringAsync($"http://localhost:{section["AzureADMSIPort"].Value}/oauth2/token?resource=https://management.azure.com");
-                return JToken.Parse(tokenresponse).SelectToken("$.access_token").ToString();
+                var req = new HttpRequestMessage(HttpMethod.Get,$"http://localhost:{section["AzureADMSIPort"].Value}/oauth2/token?resource=https://management.azure.com/");
+                req.Headers.TryAddWithoutValidation("Metadata", "true");
+
+                var tokenresponse = await http.SendAsync(req);
+
+                return JToken.Parse(await tokenresponse.Content.ReadAsStringAsync()).SelectToken("$.access_token").ToString();
 
             }
            

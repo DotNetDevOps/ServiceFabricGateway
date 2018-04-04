@@ -5,10 +5,15 @@
     <Parameter Name="AzureADServicePrincipal" DefaultValue="" />
     <Parameter Name="TenantId" DefaultValue="" />
     <Parameter Name="ApplicationStorageAccountId" DefaultValue="" />
-    <Parameter Name="AzureResourceManagerCertThumbrint" DefaultValue="C03BB5A6410741CDD2927B4FF88C3E67215A393B" />
-    <Parameter Name="AzureADMSIPort" DefaultValue="50342"/>
-    <Parameter Name="Azure.KeyVault.Uri" DefaultValue="https://earthml-core-k3ci.vault.azure.net/" />
+    <Parameter Name="AzureResourceManagerCertThumbrint" DefaultValue="" />
+    <Parameter Name="AzureADMSIPort" DefaultValue="50342" />
+    <Parameter Name="Azure.KeyVault.Uri" DefaultValue="" />
     <Parameter Name="ASPNETCORE_ENVIRONMENT" DefaultValue="Development" />
+    <Parameter Name="GatewayServerName" DefaultValue="earthml.com" />
+    <Parameter Name="GatewayReverseProxyLocation" DefaultValue="/gateway/" />
+    <Parameter Name="GatewaySslOptions" DefaultValue="{'Enabled':false,'SignerEmail':'info@earthml.com','UseHttp01Challenge':false}" />
+    <Parameter Name="GatewayProperties" DefaultValue="{'CloudFlareZoneId':'ac1d153353eebc8508f7bb31ef1ab46c'}" />
+    <Parameter Name="APPLICATION_INSIGHTS" DefaultValue="10e77ea7-1d38-40f7-901c-ef3c2e7d48ef" />
   </Parameters>
   <!-- Import the ServiceManifest from the ServicePackage. The ServiceManifestName and ServiceManifestVersion 
        should match the Name and Version attributes of the ServiceManifest element defined in the 
@@ -20,16 +25,23 @@
         <Settings>
           <Section Name="AzureResourceManager">
             <Parameter Name="AzureADServicePrincipal" Value="[AzureADServicePrincipal]" IsEncrypted="true" />
-            <Parameter Name="AzureADMSIPort" Value="[AzureADMSIPort]"/>
+            <Parameter Name="AzureADMSIPort" Value="[AzureADMSIPort]" />
             <Parameter Name="TenantId" Value="[TenantId]" />
             <Parameter Name="ApplicationStorageAccountId" Value="[ApplicationStorageAccountId]" />
             <Parameter Name="Azure.KeyVault.Uri" Value="[Azure.KeyVault.Uri]" />
+          </Section>
+          <Section Name="Gateway">
+            <Parameter Name="ServerName" Value="[GatewayServerName]" />
+            <Parameter Name="ReverseProxyLocation" Value="[GatewayReverseProxyLocation]" />
+            <Parameter Name="SslOptions" Value="[GatewaySslOptions]" />
+            <Parameter Name="Properties" Value="[GatewayProperties]" />
           </Section>
         </Settings>
       </ConfigOverride>
     </ConfigOverrides>
     <EnvironmentOverrides CodePackageRef="Code">
       <EnvironmentVariable Name="ASPNETCORE_ENVIRONMENT" Value="[ASPNETCORE_ENVIRONMENT]" />
+      <EnvironmentVariable Name="APPLICATION_INSIGHTS" Value="[APPLICATION_INSIGHTS]" />
     </EnvironmentOverrides>
     <Policies>
       <RunAsPolicy CodePackageRef="Code" UserRef="Admin" EntryPointType="All" />

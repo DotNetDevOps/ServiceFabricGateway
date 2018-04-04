@@ -30,6 +30,7 @@ using Polly.Retry;
 using SInnovations.ServiceFabric.GatewayService.Configuration;
 using System.Net.Http;
 using System.Security.Cryptography;
+using Newtonsoft.Json;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
@@ -47,38 +48,36 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         private readonly FabricClient _fabricClient = new FabricClient();
 
-        public NginxGatewayService(StatelessServiceContext serviceContext, IUnityContainer container, ILoggerFactory factory, StorageConfiguration storage)
+        public NginxGatewayService(StatelessServiceContext serviceContext,
+            IUnityContainer container, ILoggerFactory factory,
+            StorageConfiguration storage,
+            ConfigurationPackage configurationPackage)
             : base(new KestrelHostingServiceOptions
             {
-
-                GatewayOptions = new GatewayOptions
+                 GatewayOptions = new GatewayOptions
                 {
                     Key = "NGINX-MANAGER",
-                    ReverseProxyLocation = "/manage/",
-                    ServerName = "www.earthml.com",
-                    Ssl = new SslOptions
-                    {
-                        Enabled = true,
-                        SignerEmail = "info@earthml.com"
-                    },
-                    Properties = new Dictionary<string, object> { {"CloudFlareZoneId", "ac1d153353eebc8508f7bb31ef1ab46c" } }
-                },
-                AdditionalGateways = new GatewayOptions[]
-                {
-                    new GatewayOptions
-                    {
-                       Key ="NGINX-MANAGER-LOCAL",
-                       ReverseProxyLocation = "/manage/",
-                       ServerName = "local.earthml.com",
-                       Ssl = new SslOptions
-                       {
-                            Enabled = true,
-                            SignerEmail = "info@earthml.com",
-                       //     UseHttp01Challenge = true
-                       },
-                        Properties = new Dictionary<string, object> { {"CloudFlareZoneId", "ac1d153353eebc8508f7bb31ef1ab46c" } }
-                    }
-                }
+                    ReverseProxyLocation = configurationPackage.Settings.Sections["Gateway"].Parameters["ReverseProxyLocation"].Value,
+                    ServerName =  configurationPackage.Settings.Sections["Gateway"].Parameters["ServerName"].Value,
+                    Ssl = JsonConvert.DeserializeObject<SslOptions>(configurationPackage.Settings.Sections["Gateway"].Parameters["SslOptions"].Value),
+                    Properties = JsonConvert.DeserializeObject<Dictionary<string,object>>(configurationPackage.Settings.Sections["Gateway"].Parameters["Properties"].Value)
+                 },
+                //AdditionalGateways = new GatewayOptions[]
+                //{
+                //    new GatewayOptions
+                //    {
+                //       Key ="NGINX-MANAGER-LOCAL",
+                //       ReverseProxyLocation = "/manage/",
+                //       ServerName = "local.earthml.com",
+                //       Ssl = new SslOptions
+                //       {
+                //            Enabled = true,
+                //            SignerEmail = "info@earthml.com",
+                //       //     UseHttp01Challenge = true
+                //       },
+                //        Properties = new Dictionary<string, object> { {"CloudFlareZoneId", "ac1d153353eebc8508f7bb31ef1ab46c" } }
+                //    }
+                //}
 
             }, serviceContext, factory, container)
         {
@@ -140,6 +139,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             ///# Enable compression both for HTTP/1.0 and HTTP/1.1.
             sb.AppendLine("\tgzip_http_version  1.1;");
 
+
+            sb.AppendLine("\tserver_names_hash_bucket_size  64;");
 
             ///Compression level (1-9).
             /// 5 is a perfect compromise between size and cpu usage, offering about
@@ -250,7 +251,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 sb.AppendLine("\t\tlocation / {");
                 sb.AppendLine("\t\t\treturn 444;");
                 sb.AppendLine("\t\t}");
-                sb.AppendLine("\t\tlocation /heathcheck/ {");
+                sb.AppendLine("\t\tlocation = /heathcheck {");
                 sb.AppendLine("\t\t\treturn 200;");
                 sb.AppendLine("\t\t}");
                 sb.AppendLine("\t\tlocation /manage/ {");
@@ -268,8 +269,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                         var state = await GetCertGenerationStateAsync(serverName, serverGroup.Value.First().Ssl, false, token);
 
-                        _logger.LogInformation("Certificate for {servername}: {isNull} {isCompleted}", serverName, state == null, state?.Completed??false);
+                        _logger.LogInformation("Certificate for {servername}: IsNull={isNull} IsCompleted={isCompleted}", serverName, state == null, state?.Completed??false);
                         sslOn = state != null && state.Completed;
+
+                        _logger.LogInformation("Certificate for {servername}: IsNull={isNull} IsCompleted={isCompleted} sslOn={sslOn}", serverName, state == null, state?.Completed ?? false,sslOn);
                     }
 
                     if (serverName.StartsWith("www.") && serverGroup.Value.Any(a => a.Properties.ContainsKey("www301") && (bool)a.Properties["www301"]))
@@ -326,7 +329,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                             sslsb.AppendLine($"\t\tserver_name  {serverName};");
                             sslsb.AppendLine();
 
-                            sslOn = await SetupSsl(sslsb, serverGroup, serverName, token);
+                            sslOn = await SetupSsl(sslsb, serverGroup.Value.First(), serverName, token);
                         }
                          
 
@@ -376,13 +379,16 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             File.WriteAllText("nginx.conf", sb.ToString());
         }
 
-        private async Task<bool> SetupSsl(StringBuilder sb, KeyValuePair<string, List<GatewayServiceRegistrationData>> serverGroup, string serverName, CancellationToken token)
+        private async Task<bool> SetupSsl(StringBuilder sb, GatewayServiceRegistrationData gatewayServiceRegistrationData, string serverName, CancellationToken token)
         {
+
+           
+            var certCN =gatewayServiceRegistrationData.Ssl.UseHttp01Challenge ? serverName : string.Join(".", serverName.Split('.').TakeLast(2));
+
             var certs = storageAccount.CreateCloudBlobClient().GetContainerReference("certs");
-            var domain1 = string.Join(".", serverName.Split('.').TakeLast(2));
-           // var certBlob = certs.GetBlockBlobReference($"{domain1}.crt");
-            var keyBlob = certs.GetBlockBlobReference($"{domain1}.key");
-            var chainBlob = certs.GetBlockBlobReference($"{domain1}.fullchain.pem");
+
+            var keyBlob = certs.GetBlockBlobReference($"{certCN}.key");
+            var chainBlob = certs.GetBlockBlobReference($"{certCN}.fullchain.pem");
 
             Directory.CreateDirectory(Path.Combine(Context.CodePackageActivationContext.WorkDirectory, "letsencrypt"));
 
@@ -390,11 +396,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
             if (await chainBlob.ExistsAsync() && await keyBlob.ExistsAsync())
             {
-                await keyBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{domain1}.key", FileMode.Create);
-                await chainBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{domain1}.fullchain.pem", FileMode.Create);
+                await keyBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{certCN}.key", FileMode.Create);
+                await chainBlob.DownloadToFileAsync($"{Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{certCN}.fullchain.pem", FileMode.Create);
 
-                sb.AppendLine($"\t\tssl_certificate {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{domain1}.fullchain.pem;");
-                sb.AppendLine($"\t\tssl_certificate_key {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{domain1}.key;");
+                sb.AppendLine($"\t\tssl_certificate {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{certCN}.fullchain.pem;");
+                sb.AppendLine($"\t\tssl_certificate_key {Context.CodePackageActivationContext.WorkDirectory}/letsencrypt/{certCN}.key;");
 
                 sb.AppendLine($"\t\tssl_session_timeout  5m;");
 
@@ -409,7 +415,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
 
 
-            await GetCertGenerationStateAsync(serverName, serverGroup.Value.First().Ssl, true, token);
+            await GetCertGenerationStateAsync(serverName, gatewayServiceRegistrationData.Ssl, true, token);
 
             return false;
                
@@ -700,7 +706,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         public async Task<CertGenerationState> GetCertGenerationStateAsync(string hostname, SslOptions options, bool force, CancellationToken token)
         {
-
+            _logger.LogInformation("Begin GetCertGenerationState {hostname}, Force={force}",hostname,force);
 
             try
             {
@@ -719,13 +725,21 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 }
 
 
+                _logger.LogInformation("Requesting certificate for {hostname}, Force={force}", hostname, force);
+
                 await gateway.RequestCertificateAsync(hostname, options, force);
 
             } catch(Exception ex)
             {
+                _logger.LogWarning(ex,"Throwing GetCertGenerationState {hostname}", hostname);
                 return null;
             }
-           // await ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId(hostname))
+            finally{
+
+                _logger.LogInformation("End GetCertGenerationState {hostname}", hostname);
+            }
+            
+            // await ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId(hostname))
 
             //if (options.UseHttp01Challenge)
             //{

@@ -15,4 +15,11 @@
     <Parameter Name="ApplicationStorageAccountId"  MustOverride="true" Value="" />
     <Parameter Name="Azure.KeyVault.Uri" MustOverride="true" Value=""/>
   </Section>
+
+  <Section Name="Gateway">
+    <Parameter Name="ServerName" Value="earthml.com" />
+    <Parameter Name="ReverseProxyLocation" Value="/gateway/" />
+    <Parameter Name="SslOptions" Value="{'Enabled':false,'SignerEmail':'info@earthml.com','UseHttp01Challenge':false}" />
+    <Parameter Name="Properties" Value="{'CloudFlareZoneId':'ac1d153353eebc8508f7bb31ef1ab46c'}" />
+  </Section>
 </Settings>

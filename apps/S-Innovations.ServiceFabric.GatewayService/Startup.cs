@@ -22,6 +22,7 @@ using System.Fabric;
 using System.Linq;
 using System.Threading.Tasks;
 using SInnovations.ServiceFabric.Gateway.Common.Actors;
+using Unity;
 
 //[assembly: FabricTransportServiceRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
 //[assembly: FabricTransportActorRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
@@ -201,6 +202,13 @@ namespace SInnovations.ServiceFabric.GatewayService
             services.AddRouting();         
             
         }
+        public void ConfigureContainer(IUnityContainer container)
+        {
+            container.RegisterInstance("This string is displayed if container configured correctly",
+                                       "This string is displayed if container configured correctly");
+
+
+        }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
@@ -247,7 +255,18 @@ namespace SInnovations.ServiceFabric.GatewayService
                     
                     {
                         //var _fabricClient = new FabricClient();
-                        var applicationName = request.HttpContext.RequestServices.GetService<ICodePackageActivationContext>().ApplicationName;
+                        var loggerfactory = request.HttpContext.RequestServices.GetService<ILoggerFactory>();
+                        var logger = loggerfactory.CreateLogger("acme-challenge");
+
+                        logger.LogInformation("Acme-Challenge request for {Host}", request.Host.Host);
+
+                        var codeContext = request.HttpContext.RequestServices.GetService<ICodePackageActivationContext>();
+                        logger.LogInformation("Acme-Challenge request for {host} using {Context}", request.Host.Host,codeContext);
+
+                        var applicationName = codeContext.ApplicationName;
+
+                        logger.LogInformation("Acme-Challenge request for {host} with {applicationName}", request.Host.Host, applicationName);
+
                         var actorServiceUri = new Uri($"{applicationName}/{nameof(GatewayManagementService)}");
                         var actorservice = ServiceProxy.Create<IGatewayManagementService>(actorServiceUri, request.Host.Host.ToPartitionHashFunction());
 

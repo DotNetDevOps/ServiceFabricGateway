@@ -41,6 +41,7 @@
     </EntryPoint>
     <EnvironmentVariables>
       <EnvironmentVariable Name="ASPNETCORE_ENVIRONMENT" Value="Development"/>
+      <EnvironmentVariable Name="APPLICATION_INSIGHTS" Value="10e77ea7-1d38-40f7-901c-ef3c2e7d48ef"/>
     </EnvironmentVariables>
   </CodePackage>
   <!-- Config package is the contents of the Config directoy under PackageRoot that contains an 
