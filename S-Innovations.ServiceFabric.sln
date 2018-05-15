@@ -38,17 +38,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "S-Innovations.ServiceFabric
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "S-Innovations.ServiceFabric.Storage", "src\S-Innovations.ServiceFabric.Storage\S-Innovations.ServiceFabric.Storage.csproj", "{E7A3FC26-59C6-4598-A847-558A94033653}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore2", "src\S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore2\S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore2.csproj", "{28449AC8-BEF0-42D1-B033-BCDAE6F6EB45}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "S-Innovations.ServiceFabric.Storage.AspNetCore2", "src\S-Innovations.ServiceFabric.Storage.NetStandard\S-Innovations.ServiceFabric.Storage.AspNetCore2.csproj", "{1E950508-56C2-4094-A039-8CCE634480CE}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ResourceProvider", "ResourceProvider", "{4A2396CF-FF2F-4902-AA32-F0588FA59AE3}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "S-Innovations.ServiceFabric.ResourceProvider", "src\S-Innovations.ServiceFabric.ResourceProvider\S-Innovations.ServiceFabric.ResourceProvider.csproj", "{F09903F2-0558-4287-9205-1DF4EA5444CC}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{424BB76D-67FD-4DFB-ACC2-44BA2DDC9371}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "S-Innovations.ServiceFabric.IntegrationTests", "test\S-Innovations.ServiceFabric.IntegrationTests\S-Innovations.ServiceFabric.IntegrationTests.csproj", "{F88CD07C-2BEF-4CFD-ABF8-1547674885D1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "S-Innovations.ServiceFabric.IntegrationTests", "test\S-Innovations.ServiceFabric.IntegrationTests\S-Innovations.ServiceFabric.IntegrationTests.csproj", "{F88CD07C-2BEF-4CFD-ABF8-1547674885D1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -97,22 +93,6 @@ Global
 		{E7A3FC26-59C6-4598-A847-558A94033653}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E7A3FC26-59C6-4598-A847-558A94033653}.Release|x64.ActiveCfg = Release|Any CPU
 		{E7A3FC26-59C6-4598-A847-558A94033653}.Release|x64.Build.0 = Release|Any CPU
-		{28449AC8-BEF0-42D1-B033-BCDAE6F6EB45}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{28449AC8-BEF0-42D1-B033-BCDAE6F6EB45}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{28449AC8-BEF0-42D1-B033-BCDAE6F6EB45}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{28449AC8-BEF0-42D1-B033-BCDAE6F6EB45}.Debug|x64.Build.0 = Debug|Any CPU
-		{28449AC8-BEF0-42D1-B033-BCDAE6F6EB45}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{28449AC8-BEF0-42D1-B033-BCDAE6F6EB45}.Release|Any CPU.Build.0 = Release|Any CPU
-		{28449AC8-BEF0-42D1-B033-BCDAE6F6EB45}.Release|x64.ActiveCfg = Release|Any CPU
-		{28449AC8-BEF0-42D1-B033-BCDAE6F6EB45}.Release|x64.Build.0 = Release|Any CPU
-		{1E950508-56C2-4094-A039-8CCE634480CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1E950508-56C2-4094-A039-8CCE634480CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1E950508-56C2-4094-A039-8CCE634480CE}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{1E950508-56C2-4094-A039-8CCE634480CE}.Debug|x64.Build.0 = Debug|Any CPU
-		{1E950508-56C2-4094-A039-8CCE634480CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1E950508-56C2-4094-A039-8CCE634480CE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1E950508-56C2-4094-A039-8CCE634480CE}.Release|x64.ActiveCfg = Release|Any CPU
-		{1E950508-56C2-4094-A039-8CCE634480CE}.Release|x64.Build.0 = Release|Any CPU
 		{F09903F2-0558-4287-9205-1DF4EA5444CC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F09903F2-0558-4287-9205-1DF4EA5444CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F09903F2-0558-4287-9205-1DF4EA5444CC}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -139,8 +119,6 @@ Global
 		{E1DD588D-46C9-4FCA-A161-FCC1E7E275D7} = {D75BDCC0-907D-4125-9EBC-815A8F5054DB}
 		{9CDC0E92-36CA-4014-B503-17E077F6A2A2} = {D75BDCC0-907D-4125-9EBC-815A8F5054DB}
 		{E7A3FC26-59C6-4598-A847-558A94033653} = {A976CAEE-2F6C-4D09-8567-D4C3E9484556}
-		{28449AC8-BEF0-42D1-B033-BCDAE6F6EB45} = {D75BDCC0-907D-4125-9EBC-815A8F5054DB}
-		{1E950508-56C2-4094-A039-8CCE634480CE} = {A976CAEE-2F6C-4D09-8567-D4C3E9484556}
 		{F09903F2-0558-4287-9205-1DF4EA5444CC} = {4A2396CF-FF2F-4902-AA32-F0588FA59AE3}
 		{F88CD07C-2BEF-4CFD-ABF8-1547674885D1} = {424BB76D-67FD-4DFB-ACC2-44BA2DDC9371}
 	EndGlobalSection
