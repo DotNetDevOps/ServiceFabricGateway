@@ -52,9 +52,14 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore
             var _config = new ConfigurationBuilder()
                 .AddEnvironmentVariables(prefix: "ASPNETCORE_")
                 .Build();
-            var _options = new WebHostOptions(_config);
-            var contentRootPath = ResolveContentRootPath(_options.ContentRootPath, AppContext.BaseDirectory);
-            _hostingEnvironment.Initialize(Assembly.GetEntryAssembly()?.GetName().Name, contentRootPath, _options);
+            var _options = new WebHostOptions(_config, Assembly.GetEntryAssembly()?.GetName().Name)
+            {
+                
+            };
+           // Microsoft.AspNetCore.Hosting.Internal.HostingEnvironmentExtensions.Initialize
+
+            var contentRootPath = ResolveContentRootPath(_options.ContentRootPath, AppContext.BaseDirectory); 
+            _hostingEnvironment.Initialize(contentRootPath, _options);
             this.RegisterInstance<IHostingEnvironment>(_hostingEnvironment);
         }
         public IUnityContainer InitializeScope(IUnityContainer container)
