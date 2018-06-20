@@ -30,9 +30,7 @@ using Microsoft.ApplicationInsights.ServiceFabric.Module;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using SInnovations.ServiceFabric.Gateway.Common.Extensions;
 using System.Linq;
-#if NETCORE20
 using Unity.Microsoft.DependencyInjection;
-#endif
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 {
@@ -228,15 +226,15 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
                             }
 
-#if NETCORE10
-                            if (Container.IsRegistered<ILoggerFactory>())
-                            {
-                                _logger.LogInformation("UseLoggerFactory for {gatewayKey}", Options.GatewayOptions.Key);
-                                builder.UseLoggerFactory(Container.Resolve<ILoggerFactory>());
-                            }
-#endif
+//#if NETCORE10
+//                            if (Container.IsRegistered<ILoggerFactory>())
+//                            {
+//                                _logger.LogInformation("UseLoggerFactory for {gatewayKey}", Options.GatewayOptions.Key);
+//                                builder.UseLoggerFactory(Container.Resolve<ILoggerFactory>());
+//                            }
+//#endif
 
-#if NETCORE20
+//#if NETCORE20
 
                             if (Container.IsRegistered<LoggerConfiguration>())
                             {
@@ -259,7 +257,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                           
                                 });
                             }
-#endif
+//#endif
 
 
                             ConfigureBuilder(builder);
@@ -277,9 +275,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
         public virtual void ConfigureBuilder(IWebHostBuilder builder)
         {
-#if NETCORE20
+
             builder.UseUnityServiceProvider(Container);
-#endif
 
             WebBuilderConfiguration?.Invoke(builder);
         }

@@ -159,11 +159,9 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Communica
             return retry.ExecuteAsync(async () =>
             {
 
-#if NETCORE20
+ 
                 await this.webHost.StartAsync();
-#else
-                await Task.Run(() => this.webHost.Start());
-#endif
+ 
 
                 var url = this.webHost.ServerFeatures.Get<IServerAddressesFeature>().Addresses
                         .Select(a => a.Replace("://+", "://" + this.serviceContext.NodeContext.IPAddressOrFQDN)).FirstOrDefault();
