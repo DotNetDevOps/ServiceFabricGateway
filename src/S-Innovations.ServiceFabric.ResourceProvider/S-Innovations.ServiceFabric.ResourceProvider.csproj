@@ -7,12 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="IdentityModel" Version="3.6.1" />
+    <PackageReference Include="IdentityModel" Version="3.7.1" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.6.4" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="2.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="2.1.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="2.1.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="2.1.1" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="2.1.1" />
     <PackageReference Include="Microsoft.ServiceFabric.Services.Remoting" Version="3.1.283" />
     <PackageReference Include="S-Innovations.Azure.MessageProcessor.ServiceBus" Version="2.0.0-pre-2018040401" />
   </ItemGroup>
