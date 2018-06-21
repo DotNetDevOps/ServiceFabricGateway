@@ -572,10 +572,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 else
                 {
                     var pathbase = location.TrimEnd('/');
-                    if (!string.IsNullOrEmpty(pathbase))
-                    {
-                        sb.AppendLine($"{tabs}proxy_set_header X-Forwarded-PathBase   {pathbase};");
-                    } 
+                    sb.AppendLine($"{tabs}proxy_set_header X-Forwarded-PathBase   {(string.IsNullOrEmpty(pathbase) ? "/" : pathbase)};");                  
                 }
 
                 sb.AppendLine($"{tabs}proxy_cache_bypass $http_upgrade;");
