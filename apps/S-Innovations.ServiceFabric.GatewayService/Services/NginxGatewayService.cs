@@ -571,8 +571,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     sb.AppendLine($"{tabs}proxy_set_header X-Forwarded-PathBase   {location.Substring(1).Trim()};");
                 else
                 {
-                    sb.AppendLine($"{tabs}proxy_set_header X-Forwarded-PathBase   {location};");
-
+                    var pathbase = location.TrimEnd('/');
+                    sb.AppendLine($"{tabs}proxy_set_header X-Forwarded-PathBase   {(string.IsNullOrEmpty(pathbase) ? "/" : pathbase)};");                  
                 }
 
                 sb.AppendLine($"{tabs}proxy_cache_bypass $http_upgrade;");

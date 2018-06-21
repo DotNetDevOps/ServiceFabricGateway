@@ -508,7 +508,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                                     await tx.CommitAsync();
                                 }
 
-
+                                await Task.Delay(2000); //give it abit of time to ensure nginx have been set up for .well-known
 
                                 using (ITransaction tx = StateManager.CreateTransaction())
                                 {
