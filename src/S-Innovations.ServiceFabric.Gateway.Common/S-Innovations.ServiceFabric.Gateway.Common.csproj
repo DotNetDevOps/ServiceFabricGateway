@@ -1,8 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+  <Import Project="..\..\package.props" />
   <PropertyGroup>
     <AssemblyTitle>Common Library for S-Innoations Service Fabric Gateway</AssemblyTitle>
-    <Version>2.1.0</Version>
     <TargetFrameworks>net462;netstandard2.0</TargetFrameworks>
     <AssemblyName>S-Innovations.ServiceFabric.Gateway.Common</AssemblyName>
     <PackageId>S-Innovations.ServiceFabric.Gateway.Common</PackageId>

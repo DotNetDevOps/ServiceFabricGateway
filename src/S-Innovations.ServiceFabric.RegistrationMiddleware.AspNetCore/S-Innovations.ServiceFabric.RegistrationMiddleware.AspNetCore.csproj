@@ -1,8 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+  <Import Project="..\..\package.props" />
   <PropertyGroup>
     <AssemblyTitle>ServiceFabric Gateway Registration Middleware for AspNetCore</AssemblyTitle>
-    <Version>2.1.0</Version>
     <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore</AssemblyName>
     <PackageId>S-Innovations.ServiceFabric.RegistrationMiddleware.AspNetCore</PackageId>
