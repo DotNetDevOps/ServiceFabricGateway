@@ -1,0 +1,9 @@
+<Project>
+
+  <PropertyGroup>
+    <Version>2.1.1</Version>
+    <PackageReleaseNotes>Bug fixes and minor performance optimizations</PackageReleaseNotes>
+  </PropertyGroup>
+
+
+</Project>
