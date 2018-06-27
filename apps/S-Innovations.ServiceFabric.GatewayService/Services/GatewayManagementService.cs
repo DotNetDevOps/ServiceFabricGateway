@@ -570,11 +570,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     var authorizations = await orderContext.Authorizations();
                     var auths = await Task.WhenAll(authorizations.Select(c => c.Http()));
                     var challenges = await Task.WhenAll(auths.Select(c => c.Resource()));
-                    var status = challenges.Select(c => c.Status.Value).All(c => c != ChallengeStatus.Pending);
+                    var allNotPending = challenges.Select(c => c.Status.Value).All(c => c != ChallengeStatus.Pending);
                     var allvalid= challenges.Select(c => c.Status.Value).All(c => c == ChallengeStatus.Valid);
                     logger.LogInformation( "Completing challenges {@challenges}", challenges);
 
-                    if (status)
+                    if (allNotPending)
                     {
                         if(allvalid)
                         {
@@ -637,6 +637,16 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         else
                         {
                             logger.LogWarning("Handing Http Challenge {hostname} auth status={status} not valid", hostname, order.Status);
+
+                            using (ITransaction tx = StateManager.CreateTransaction())
+                            {
+                                await certs.SetAsync(tx, hostname, certInfo.RestartOrder(), GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
+                                await tx.CommitAsync();
+                                _lastUpdated = DateTimeOffset.UtcNow;
+                            }
+
+                           
+
                         }
                     }
                     else

@@ -122,5 +122,12 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
                 OrderLocation = OrderLocation, Counter=Counter, ExtensionData = ExtensionData
             };
         }
+
+        public CertGenerationState RestartOrder()
+        {
+            var clone = Increment();
+            clone.HttpChallengeInfo = null;
+            return clone;
+        }
     }
 }
