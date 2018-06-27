@@ -270,10 +270,12 @@ namespace SInnovations.ServiceFabric.GatewayService
                         var actorServiceUri = new Uri($"{applicationName}/{nameof(GatewayManagementService)}");
                         var actorservice = ServiceProxy.Create<IGatewayManagementService>(actorServiceUri, request.Host.Host.ToPartitionHashFunction());
 
-                        var thumbprint = await actorservice.GetChallengeResponseAsync(request.Host.Host,request.HttpContext.RequestAborted);
+                        var keyAuthString = await actorservice.GetChallengeResponseAsync(request.Host.Host,request.HttpContext.RequestAborted);
+
+                        logger.LogInformation("Acme-Challenge request for {host} with {applicationName} returns {keyAuthString}", request.Host.Host, applicationName, keyAuthString);
 
                         response.ContentType = "plain/text";
-                        await response.WriteAsync(thumbprint);
+                        await response.WriteAsync(keyAuthString);
 
                         // var actor = ActorProxy.Create<IGatewayServiceManagerActor>(new ActorId("local.earthml.com"))
                         //var partitions = new List<long>();
