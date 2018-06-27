@@ -137,7 +137,9 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             sb.AppendLine("\tgzip_http_version  1.1;");
 
 
-            sb.AppendLine("\tserver_names_hash_bucket_size  64;");
+            sb.AppendLine("\tserver_names_hash_bucket_size  128;");
+
+     
 
             ///Compression level (1-9).
             /// 5 is a perfect compromise between size and cpu usage, offering about
