@@ -58,7 +58,7 @@
       <Endpoint Name="GatewayServiceManagerActorServiceEndpoint" />
       <Endpoint Name="GatewayServiceManagerActorServiceReplicatorEndpoint" />
       <Endpoint Name="ServiceEndpoint" Protocol="http" Type ="Input"/>
-      <Endpoint Name="ServiceEndpointV2" />
+      <Endpoint Name="ServiceEndpointV2_1" />
     </Endpoints>
   </Resources>
 </ServiceManifest>

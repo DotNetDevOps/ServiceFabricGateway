@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 using System;
 using System.Security.Claims;
 
-[assembly: FabricTransportServiceRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
+[assembly: FabricTransportServiceRemotingProvider( RemotingClientVersion = RemotingClientVersion.V2_1, RemotingListenerVersion = RemotingListenerVersion.V2_1)]
 
 
 namespace SInnovations.ServiceFabric.ResourceProvider

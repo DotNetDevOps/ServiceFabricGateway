@@ -28,6 +28,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Unity;
 using SInnovations.ServiceFabric.Gateway.Common.Extensions;
+using Microsoft.ServiceFabric.Services.Remoting.FabricTransport;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
@@ -663,33 +664,25 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         private DateTimeOffset lastWritten = DateTimeOffset.MinValue;
 
 
-        //public async Task DeleteGatewayServiceAsync(string v, CancellationToken cancellationToken)
-        //{
-        //    var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
-        //    var actorServiceUri = new Uri($"{applicationName}/GatewayServiceManagerActorService");
-        //    List<long> partitions = await GetPartitionsAsync(actorServiceUri);
-        //    var serviceProxyFactory = new ServiceProxyFactory(c => new FabricTransportServiceRemotingClientFactory());
-
-
-        //    foreach (var partition in partitions)
-        //    {
-        //        var actorService = serviceProxyFactory.CreateServiceProxy<IGatewayServiceManagerActorService>(actorServiceUri, new ServicePartitionKey(partition));
-        //        await actorService.DeleteGatewayServiceAsync(v, cancellationToken);
-        //    }
-
-        //}
+      
         public async Task<List<GatewayServiceRegistrationData>> GetGatewayServicesAsync(CancellationToken cancellationToken)
         {
             var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
             var actorServiceUri = new Uri($"{applicationName}/{nameof(GatewayManagementService)}");
             List<long> partitions = await GetPartitionsAsync(actorServiceUri);
 
-            var serviceProxyFactory = new ServiceProxyFactory(c => new FabricTransportServiceRemotingClientFactory());
+           // var serviceProxyFactory = new ServiceProxyFactory(c => new FabricTransportServiceRemotingClientFactory());
+            var proxyFactory = new ServiceProxyFactory((c) =>
+            {
+                var settings = new FabricTransportRemotingSettings();
+                settings.UseWrappedMessage = true;
+                return new FabricTransportServiceRemotingClientFactory(settings);
+            });
 
             var all = new List<GatewayServiceRegistrationData>();
             foreach (var partition in partitions)
             {
-                var actorService = serviceProxyFactory.CreateServiceProxy<IGatewayManagementService>(actorServiceUri, new ServicePartitionKey(partition));
+                var actorService = proxyFactory.CreateServiceProxy<IGatewayManagementService>(actorServiceUri, new ServicePartitionKey(partition));
 
                 var state = await actorService.GetGatewayServicesAsync(cancellationToken);
                 all.AddRange(state);

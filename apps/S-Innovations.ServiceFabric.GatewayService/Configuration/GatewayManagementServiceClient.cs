@@ -62,12 +62,15 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
         {
 
 
-            var settings = new FabricTransportRemotingSettings();
+          //  var settings = new FabricTransportRemotingSettings();
 
-            settings.OperationTimeout = TimeSpan.FromMinutes(1);
+         
             return new ServiceProxyFactory(
                 (h) =>
                 {
+                    var settings = new FabricTransportRemotingSettings();
+                    settings.UseWrappedMessage = true;
+                    settings.OperationTimeout = TimeSpan.FromMinutes(1);
                     return new FabricTransportServiceRemotingClientFactory(settings);
                 });
 
