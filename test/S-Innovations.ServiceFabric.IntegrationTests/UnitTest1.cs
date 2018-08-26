@@ -47,21 +47,21 @@ namespace SInnovations.ServiceFabric.IntegrationTests
 
     }
 
-    public class a : IServiceProviderFactory<IServiceCollection>
-    {
-        public IServiceCollection CreateBuilder(IServiceCollection services)
-        {
-            return services;
-        }
+    //public class a : IServiceProviderFactory<IServiceCollection>
+    //{
+    //    public IServiceCollection CreateBuilder(IServiceCollection services)
+    //    {
+    //        return services;
+    //    }
 
-        public IServiceProvider CreateServiceProvider(IServiceCollection containerBuilder)
-        {
-            var a = new ServiceProviderFactory(null);
-            var childchild = a.CreateBuilder(containerBuilder);
-            var sp = a.CreateServiceProvider(childchild);
-            return sp;
-        }
-    }
+    //    public IServiceProvider CreateServiceProvider(IServiceCollection containerBuilder)
+    //    {
+    //        var a = new ServiceProviderFactory(null);
+    //        var childchild = a.CreateBuilder(containerBuilder);
+    //        var sp = a.CreateServiceProvider(childchild);
+    //        return sp;
+    //    }
+    //}
 
     public sealed class MyExtBuilder : BuilderStrategy
     {

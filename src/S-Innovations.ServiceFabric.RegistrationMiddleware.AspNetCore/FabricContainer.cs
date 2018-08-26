@@ -39,6 +39,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore
         {
             services = services ?? new ServiceCollection();
 
+            this.AddExtension(new EnumerableExtension());
+
             this.RegisterInstance<IServiceScopeInitializer>(this);
 
 //#if NETCORE20

@@ -104,6 +104,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
     //        this.Next.Process(item);
     //    }
     //}
+
+
     public interface IApplicationManager
     {
         Task RestartRequestAsync(CancellationToken cancellationToken);
@@ -189,9 +191,9 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                                 services.AddSingleton(listener);
                                 services.AddSingleton((sp)=> new KestrelHostingAddresss{Url = this.GetAddresses()["kestrel"]  });
 
-                                services.AddSingleton<ITelemetryInitializer>((serviceProvider) => FabricTelemetryInitializerExtension.CreateFabricTelemetryInitializer(serviceContext))
-                                    .AddSingleton<ITelemetryModule>(new ServiceRemotingDependencyTrackingTelemetryModule())
-                                    .AddSingleton<ITelemetryModule>(new ServiceRemotingRequestTrackingTelemetryModule());
+                               // services.AddSingleton<ITelemetryInitializer>((serviceProvider) => FabricTelemetryInitializerExtension.CreateFabricTelemetryInitializer(serviceContext))
+                               //     .AddSingleton<ITelemetryModule>(new ServiceRemotingDependencyTrackingTelemetryModule());
+                               //     .AddSingleton<ITelemetryModule>(new ServiceRemotingRequestTrackingTelemetryModule());
 
                                 services.AddSingleton(new CodePackageVersionTelemetryInitializer());
 
