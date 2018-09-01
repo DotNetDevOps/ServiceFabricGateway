@@ -39,7 +39,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore
         {
             services = services ?? new ServiceCollection();
 
-            this.AddExtension(new EnumerableExtension());
+         //s   this.AddExtension(new EnumerableExtension());
 
             this.RegisterInstance<IServiceScopeInitializer>(this);
 
