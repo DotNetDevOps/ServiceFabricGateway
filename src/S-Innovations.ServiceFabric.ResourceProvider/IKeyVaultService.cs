@@ -13,7 +13,7 @@ namespace SInnovations.ServiceFabric.ResourceProvider
     public interface IAzureADTokenService : IService
     {
         Task<string> GetTokenAsync();
-        Task<string> GetTokenAsync(string resource);
+        Task<string> GetTokenForResourceAsync(string resource);
     }
 
 }

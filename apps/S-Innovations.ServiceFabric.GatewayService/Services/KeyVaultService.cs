@@ -53,7 +53,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             return this.azureAD.GetAccessToken();
         }
 
-        public Task<string> GetTokenAsync(string resource)
+        public Task<string> GetTokenForResourceAsync(string resource)
         {
             return this.azureAD.GetTokenFromClientSecret(string.Empty, resource);
         }
