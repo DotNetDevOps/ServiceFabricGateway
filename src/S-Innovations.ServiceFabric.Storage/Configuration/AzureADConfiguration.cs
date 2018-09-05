@@ -98,9 +98,10 @@ namespace SInnovations.ServiceFabric.Storage.Configuration
         //   public ClientCredential AzureADServiceCredentials { get; set; }
         public async Task<string> GetTokenFromClientSecret(string authority, string resource)
         {
+            var section = _config.Settings.Sections["AzureResourceManager"].Parameters;
             if (UseMSI)
             {
-                var section = _config.Settings.Sections["AzureResourceManager"].Parameters;
+                
                 var http = new HttpClient();
                 var req = new HttpRequestMessage(HttpMethod.Get, $"http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource={resource}");
                 req.Headers.TryAddWithoutValidation("Metadata", "true");
@@ -111,7 +112,9 @@ namespace SInnovations.ServiceFabric.Storage.Configuration
 
             }
 
-            var authContext = new AuthenticationContext(authority);
+           
+
+            var authContext = new AuthenticationContext(authority ?? $"https://login.microsoftonline.com/{section["TenantId"].Value}");
             var result = await authContext.AcquireTokenAsync(resource, this.CreateSecureCredentials());
             return result.AccessToken;
         }

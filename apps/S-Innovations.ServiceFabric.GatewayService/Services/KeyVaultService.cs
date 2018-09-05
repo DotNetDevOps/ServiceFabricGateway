@@ -52,6 +52,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         {
             return this.azureAD.GetAccessToken();
         }
+
+        public Task<string> GetTokenAsync(string resource)
+        {
+            return this.azureAD.GetTokenFromClientSecret(string.Empty, resource);
+        }
     }
 
     //public class GatewayServiceManagerActorService : ActorService//, IGatewayServiceManagerActorService
