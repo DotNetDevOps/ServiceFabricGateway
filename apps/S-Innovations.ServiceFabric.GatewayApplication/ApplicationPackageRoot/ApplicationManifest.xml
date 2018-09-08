@@ -13,6 +13,8 @@
     <Parameter Name="GatewaySslOptions" DefaultValue="{}" />
     <Parameter Name="GatewayProperties" DefaultValue="{}" />
     <Parameter Name="APPLICATION_INSIGHTS" DefaultValue="" />
+    <Parameter Name="GatewayService_Ports_Http" DefaultValue="8498" />
+    <Parameter Name="GatewayService_Ports_Https" DefaultValue="8500" />
   </Parameters>
   <!-- Import the ServiceManifest from the ServicePackage. The ServiceManifestName and ServiceManifestVersion 
        should match the Name and Version attributes of the ServiceManifest element defined in the 
@@ -37,6 +39,12 @@
         </Settings>
       </ConfigOverride>
     </ConfigOverrides>
+    <ResourceOverrides>
+      <Endpoints>
+        <Endpoint Name="NginxServiceEndpoint" Port="[GatewayService_Ports_Http]" Protocol="http" Type="Input" />
+        <Endpoint Name="NginxSslServiceEndpoint" Port="[GatewayService_Ports_Https]" Protocol="https" Type="Input" />
+      </Endpoints>
+    </ResourceOverrides>
     <EnvironmentOverrides CodePackageRef="Code">
       <EnvironmentVariable Name="ASPNETCORE_ENVIRONMENT" Value="[ASPNETCORE_ENVIRONMENT]" />
       <EnvironmentVariable Name="APPLICATION_INSIGHTS" Value="[APPLICATION_INSIGHTS]" />
