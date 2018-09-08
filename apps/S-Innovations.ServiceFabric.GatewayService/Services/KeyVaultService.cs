@@ -55,7 +55,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         public Task<string> GetTokenForResourceAsync(string resource)
         {
-            return this.azureAD.GetTokenFromClientSecret(string.Empty, resource);
+            return this.azureAD.GetTokenFromClientSecret(null, resource);
         }
     }
 

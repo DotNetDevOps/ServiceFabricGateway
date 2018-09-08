@@ -339,7 +339,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
         {
             var partitionKey = Options.GatewayOptions.Key ?? Context.CodePackageActivationContext.GetServiceManifestName();
             var gateway = ServiceProxy.Create<IGatewayManagementService>(
-                new Uri("fabric:/S-Innovations.ServiceFabric.GatewayApplication/GatewayManagementService"), partitionKey.ToPartitionHashFunction());
+                new Uri($"fabric:/{Options.GatewayApplicationName??"S-Innovations.ServiceFabric.GatewayApplication"}/GatewayManagementService"), partitionKey.ToPartitionHashFunction());
 
             await gateway.RestartRequestAsync(partitionKey, cancellationToken);
         }
@@ -347,7 +347,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
         {
             var partitionKey = Options.GatewayOptions.Key ?? Context.CodePackageActivationContext.GetServiceManifestName();
             var gateway = ServiceProxy.Create<IGatewayManagementService>(
-                new Uri("fabric:/S-Innovations.ServiceFabric.GatewayApplication/GatewayManagementService"), partitionKey.ToPartitionHashFunction());
+                new Uri($"fabric:/{Options.GatewayApplicationName??"S-Innovations.ServiceFabric.GatewayApplication"}/GatewayManagementService"), partitionKey.ToPartitionHashFunction());
             
 
             while (!cancellationToken.IsCancellationRequested)
@@ -386,7 +386,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
             var partitionKey = gw.Key ?? Context.CodePackageActivationContext.GetServiceManifestName();
  
             var gateway = ServiceProxy.Create<IGatewayManagementService>(
-                new Uri("fabric:/S-Innovations.ServiceFabric.GatewayApplication/GatewayManagementService"),  partitionKey.ToPartitionHashFunction());
+                new Uri($"fabric:/{Options.GatewayApplicationName ?? "S-Innovations.ServiceFabric.GatewayApplication"}/GatewayManagementService"),  partitionKey.ToPartitionHashFunction());
 
 
                 await gateway.RegisterGatewayServiceAsync(new GatewayServiceRegistrationData
