@@ -59,7 +59,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     ServerName =  configurationPackage.Settings.Sections["Gateway"].Parameters["ServerName"].Value,
                     Ssl = JsonConvert.DeserializeObject<SslOptions>(configurationPackage.Settings.Sections["Gateway"].Parameters["SslOptions"].Value),
                     Properties = JsonConvert.DeserializeObject<Dictionary<string,object>>(configurationPackage.Settings.Sections["Gateway"].Parameters["Properties"].Value)
-                 },
+                 }, 
+                 GatewayApplicationName =  serviceContext.CodePackageActivationContext.ApplicationName.Replace("fabric:/","").Trim('/') //configurationPackage.Description.Name
                 //AdditionalGateways = new GatewayOptions[]
                 //{
                 //    new GatewayOptions
