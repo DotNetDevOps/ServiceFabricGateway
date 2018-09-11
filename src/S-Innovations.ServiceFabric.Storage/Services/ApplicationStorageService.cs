@@ -19,6 +19,7 @@ namespace SInnovations.ServiceFabric.Storage.Services
     {
         Task<string> GetApplicationStorageSharedAccessSignature();
         Task<string> GetApplicationStorageAccountNameAsync();
+        Task<string> GetApplicationStorageCertificateThumbprint();
     }
 
 
@@ -77,6 +78,13 @@ namespace SInnovations.ServiceFabric.Storage.Services
         {
             var a = await Storage.GetApplicationStorageAccountAsync();
             return a.Credentials.AccountName;
+        }
+
+        public Task<string> GetApplicationStorageCertificateThumbprint()
+        {
+            return Task.FromResult(
+                this.Context.CodePackageActivationContext.GetConfigurationPackageObject("Config").Settings.Sections["AzureResourceManager"].Parameters["SecretsCertificateThumbprint"].Value);
+
         }
     }
 }

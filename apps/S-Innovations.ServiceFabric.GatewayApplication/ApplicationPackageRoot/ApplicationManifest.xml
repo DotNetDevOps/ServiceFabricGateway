@@ -29,6 +29,7 @@
             <Parameter Name="TenantId" Value="[TenantId]" />
             <Parameter Name="ApplicationStorageAccountId" Value="[ApplicationStorageAccountId]" />
             <Parameter Name="Azure.KeyVault.Uri" Value="[Azure.KeyVault.Uri]" />
+            <Parameter Name="SecretsCertificateThumbprint" Value="[AzureResourceManagerCertThumbrint]" />
           </Section>
           <Section Name="Gateway">
             <Parameter Name="ServerName" Value="[GatewayServerName]" />

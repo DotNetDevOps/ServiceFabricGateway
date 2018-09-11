@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="IdentityModel" Version="3.9.0" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="2.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.AzureStorage" Version="2.1.1" />
     <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="3.19.8" />

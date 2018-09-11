@@ -374,6 +374,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     await tx.CommitAsync();
                 }
                 await certsContainer.GetBlockBlobReference($"{hostname}.err").UploadTextAsync(ex.ToString());
+                logger.LogError(ex, "Failed to generate certs for {hostname}", hostname);
 
             }
         }
