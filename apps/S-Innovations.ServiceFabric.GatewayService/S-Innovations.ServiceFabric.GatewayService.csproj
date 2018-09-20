@@ -6,7 +6,6 @@
     <AssemblyName>S-Innovations.ServiceFabric.GatewayService</AssemblyName>
     <OutputType>Exe</OutputType>
     <PackageId>S-Innovations.ServiceFabric.GatewayService</PackageId>
-     <RuntimeIdentifier>win10-x64</RuntimeIdentifier>
     <IsServiceFabricServiceProject>True</IsServiceFabricServiceProject>
   </PropertyGroup>
 

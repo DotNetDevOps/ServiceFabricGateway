@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Application xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Name="fabric:/S-Innovations.ServiceFabric.GatewayApplication" xmlns="http://schemas.microsoft.com/2011/01/fabric">
+  <Parameters>
+    <Parameter Name="GatewayService_InstanceCount" Value="1" />
+    <Parameter Name="AzureResourceManagerCertThumbrint" Value="13723516AD49A7FD0C5E6D7211A37DC155509FD2" />
+    <Parameter Name="Azure.KeyVault.Uri" Value="https://carshopper-kv.vault.azure.net/" />
+    <Parameter Name="AzureADServicePrincipal" Value="MIICMQYJKoZIhvcNAQcDoIICIjCCAh4CAQAxggFIMIIBRAIBADAsMBgxFjAUBgNVBAMTDWNhcnNob3BwZXIuZGsCEBGzpzf33k0ms+BRUr2oNNIwDQYJKoZIhvcNAQEBBQAEggEAkh3dXzikoCUu6TLI0fvomX3XlPyg/NJgCYgSqGxwvgEQODV4wvT6krdEH2YN8rzIIOfGGkaWefSvOzZdutFPKs9lY4IOBZ6yvrtqrDKse6DBw2RVLvpdU346Cw5oQDjiGs8vaFh5PDAV9oTinxRwI3aivP7AHSAD++v8cp14jFOC8KHXm+JBQK0iQUac1WcS0dO+uhIe/lX6eMbZjcDdARWyuayl0pYS8hMOc2s8Vb8AHSroSuj7xaivvLZ1yHZaRFCRvAyZutlSIQtbY3j/4Ct9yRxz0cCT4JH0bgh1H7tz/Lp9mg0RsSyfRdMNcyXVnp33xn07rhvYi8qkivDdvjCBzAYJKoZIhvcNAQcBMBQGCCqGSIb3DQMHBAitgIa8vo9ZVYCBqD0hJwCnWd/3C4SnovPtrhJrZthRDBDXeWbbuykiEfHtnrOasHbpfq1gx4lCytlMVt7Kv4RKl8qel4g+8aZTRsUPP//gPfpb2SArZpqmrvgR1XaUlJnTm93qT7XZoWo3RuG7zgyhRK0+0Aoo2rUITL9euniNGDjIzjLXTZAl/fUAG1oEhy9V5gIiO4wWHndbGOQnaBuw47MGB7GvtbHGftd7g8Vf+KpKrA==" />
+    <Parameter Name="TenantId" Value="c3c361c5-30b3-4815-8faf-f822448c53f4" />
+    <Parameter Name="ApplicationStorageAccountId" Value="/subscriptions/2971309a-5ac3-49fa-a46b-cda8873d0558/resourceGroups/carshopper-core/providers/Microsoft.Storage/storageAccounts/carshopper" />
+    <Parameter Name="GatewayServerName" Value="carshopper.eu.ngrok.io" />
+    <Parameter Name="GatewayReverseProxyLocation" Value="/gateway/" />
+    <Parameter Name="GatewaySslOptions" Value="{'Enabled':true,'SignerEmail':'pks@carshopper.dk','UseHttp01Challenge':true}" />
+    <Parameter Name="GatewayProperties" Value="{}" />
+    <Parameter Name="APPLICATION_INSIGHTS" Value="dc477b2a-065d-4e71-a254-174bcba96fbd" />
+  </Parameters>
+</Application>

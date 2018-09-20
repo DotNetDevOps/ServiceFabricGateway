@@ -18,6 +18,7 @@ using System.Collections.Generic;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions
 {
+
     public static class KestrelHostingExtensions
     {
         private static List<Action<LoggerConfiguration>> _configurations = new List<Action<LoggerConfiguration>>();

@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ApplicationPackageRoot\ApplicationManifest.xml" />
+    <None Include="ApplicationParameters\ngrok.5Node.xml" />
     <None Include="ApplicationParameters\TestCloud.xml" />
     <None Include="ApplicationParameters\Cloud.xml" />
     <None Include="ApplicationParameters\Local.5Node.xml" />

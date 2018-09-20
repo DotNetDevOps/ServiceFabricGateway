@@ -33,8 +33,9 @@
       </ExeHost>
     </SetupEntryPoint>
     <EntryPoint>
-      <ExeHost>
-        <Program>S-Innovations.ServiceFabric.GatewayService.exe</Program>
+      <ExeHost IsExternalExecutable="1">
+        <Program>dotnet</Program>
+        <Arguments>S-Innovations.ServiceFabric.GatewayService.dll</Arguments>
         <WorkingFolder>CodePackage</WorkingFolder>
         <ConsoleRedirection FileRetentionCount="5" FileMaxSizeInKb="2048" />
       </ExeHost>
