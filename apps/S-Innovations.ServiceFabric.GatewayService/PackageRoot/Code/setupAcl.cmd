@@ -1,2 +1,1 @@
 netsh advfirewall firewall show rule name="Nginx (public)" || netsh advfirewall firewall add rule name="Nginx (public)" dir=in action=allow program=.\nginx-1.11.13.exe enable=yes
-powershell -ExecutionPolicy Unrestricted -File installdotnetcore.ps1
