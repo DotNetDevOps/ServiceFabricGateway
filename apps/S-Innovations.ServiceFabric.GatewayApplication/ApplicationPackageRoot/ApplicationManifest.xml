@@ -51,7 +51,7 @@
       <EnvironmentVariable Name="APPLICATION_INSIGHTS" Value="[APPLICATION_INSIGHTS]" />
     </EnvironmentOverrides>
     <Policies>
-      <RunAsPolicy CodePackageRef="Code" UserRef="Admin" EntryPointType="All" />
+      <RunAsPolicy CodePackageRef="Code" UserRef="Service2" EntryPointType="All" />
     </Policies>
   </ServiceManifestImport>
   <DefaultServices>
@@ -84,11 +84,7 @@
   <Principals>
     <Users>
       <User Name="Service1" AccountType="NetworkService" />
-      <User Name="Admin">
-        <MemberOf>
-          <SystemGroup Name="Administrators" />
-        </MemberOf>
-      </User>
+      <User Name="Service2" AccountType="LocalSystem" />
     </Users>
   </Principals>
   <Policies>

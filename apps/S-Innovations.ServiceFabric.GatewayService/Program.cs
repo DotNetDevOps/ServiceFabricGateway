@@ -22,6 +22,7 @@ using SInnovations.ServiceFabric.ResourceProvider;
 using Unity.Injection;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace SInnovations.ServiceFabric.GatewayService
 {
@@ -67,52 +68,66 @@ namespace SInnovations.ServiceFabric.GatewayService
         }
         public static void Main(string[] args)
         {
+
+           
+            Environment.SetEnvironmentVariable("LD_LIBRARY_PATH", null);
             // var cp = CertificateProvider.GetProvider("BouncyCastle");
 
             // Setup unhandled exception handlers.
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 
-            using (var container = new FabricContainer())
+            try
             {
-                container.AddOptions();
-                container.ConfigureSerilogging(logConfiguration =>
-                         logConfiguration.MinimumLevel.Debug()
-                         .Enrich.FromLogContext()
-                         .WriteTo.LiterateConsole(outputTemplate: "[{Timestamp:HH:mm:ss} {Level}] {SourceContext}{NewLine}{Message}{NewLine}{Exception}{NewLine}")
-                         .WriteTo.ApplicationInsightsTraces(Environment.GetEnvironmentVariable("APPLICATION_INSIGHTS"), Serilog.Events.LogEventLevel.Information));
-
-
-
-                container.ConfigureApplicationStorage();
-
-
-                var keyvaultINfo = container.Resolve<KeyVaultSecretManager>();
-
-                container.UseConfiguration(new ConfigurationBuilder()
-                    .AddAzureKeyVault(keyvaultINfo.KeyVaultUrl, keyvaultINfo.Client, keyvaultINfo));
-
-
-
-                container.Configure<KeyVaultOptions>("KeyVault");
-
-                container.WithLetsEncryptService(new LetsEncryptServiceOptions
+                using (var container = new FabricContainer())
                 {
-                    BaseUri = Certes.Acme.WellKnownServers.LetsEncryptV2.AbsoluteUri// "https://acme-v01.api.letsencrypt.org"
-                });
+                    container.AddOptions();
+                    container.ConfigureSerilogging(logConfiguration =>
+                             logConfiguration.MinimumLevel.Debug()
+                             .Enrich.FromLogContext()
+                             .WriteTo.File("trace.log",retainedFileCountLimit:5, fileSizeLimitBytes:1024*1024*10)
+                             .WriteTo.LiterateConsole(outputTemplate: "[{Timestamp:HH:mm:ss} {Level}] {SourceContext}{NewLine}{Message}{NewLine}{Exception}{NewLine}")
+                             .WriteTo.ApplicationInsightsTraces(Environment.GetEnvironmentVariable("APPLICATION_INSIGHTS"), Serilog.Events.LogEventLevel.Information));
 
-                container.WithStatelessService<NginxGatewayService>("GatewayServiceType");
-                container.WithStatelessService<ApplicationStorageService>("ApplicationStorageServiceType");
-                container.WithStatelessService<KeyVaultService>("KeyVaultServiceType");
-                container.WithStatelessService<ResourceProviderService>("ResourceProviderServiceType");
 
 
-                container.WithStatefullService<GatewayManagementService>("GatewayManagementServiceType");
-                 
+                    container.ConfigureApplicationStorage();
 
-                Thread.Sleep(Timeout.Infinite);
+
+                    var keyvaultINfo = container.Resolve<KeyVaultSecretManager>();
+
+                    container.UseConfiguration(new ConfigurationBuilder()
+                        .AddAzureKeyVault(keyvaultINfo.KeyVaultUrl, keyvaultINfo.Client, keyvaultINfo));
+
+
+
+                    container.Configure<KeyVaultOptions>("KeyVault");
+
+                    container.WithLetsEncryptService(new LetsEncryptServiceOptions
+                    {
+                        BaseUri = Certes.Acme.WellKnownServers.LetsEncryptV2.AbsoluteUri// "https://acme-v01.api.letsencrypt.org"
+                    });
+
+                    container.WithStatelessService<NginxGatewayService>("GatewayServiceType");
+                    container.WithStatelessService<ApplicationStorageService>("ApplicationStorageServiceType");
+                    container.WithStatelessService<KeyVaultService>("KeyVaultServiceType");
+                    container.WithStatelessService<ResourceProviderService>("ResourceProviderServiceType");
+
+
+                    container.WithStatefullService<GatewayManagementService>("GatewayManagementServiceType");
+
+
+                    Thread.Sleep(Timeout.Infinite);
+                }
+
+            }catch(Exception ex)
+            {
+              
+              //  System.IO.File.WriteAllText("env.log", JsonConvert.SerializeObject( Environment.GetEnvironmentVariables()));
+                System.IO.File.WriteAllText("err.log", ex.ToString());
+                throw;
+             
             }
-
 
         }
 

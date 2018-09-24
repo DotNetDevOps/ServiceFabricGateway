@@ -29,6 +29,7 @@ using System.Threading.Tasks;
 using Unity;
 using SInnovations.ServiceFabric.Gateway.Common.Extensions;
 using Microsoft.ServiceFabric.Services.Remoting.FabricTransport;
+using System.Runtime.InteropServices;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
@@ -95,9 +96,27 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         private bool IsNginxRunning()
         {
+         //   if (IsLinux)
+            {
+                //var pidFile = $"/mnt/sf_gateway/{Context.CodePackageActivationContext.ApplicationName.Replace("fabric:/", "")}/nginx.pid";
+                var pidFile = Path.GetFullPath("nginx.pid");
+                if (File.Exists(pidFile) && int.TryParse(File.ReadAllText(pidFile), out int pid))
+                {
+                     
+                    return Process.GetProcesses().Any(c => c.Id == pid);
+                }else if (File.Exists(pidFile))
+                {
+                    File.Delete(pidFile);
+                }
+                return false;
+            }
+
+          
+
             if (!string.IsNullOrEmpty(nginxProcessName))
             {
                 var processes = Process.GetProcessesByName(nginxProcessName);
+               
                 return processes.Length != 0;
             }
             else
@@ -116,8 +135,20 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
             var sb = new StringBuilder();
 
+            //if (IsLinux)
+            //{
+                //https://unix.stackexchange.com/questions/134301/why-does-nginx-starts-process-as-root
+                //    sb.AppendLine($"user {Environment.UserName};");
+                //     sb.AppendLine($"pid /mnt/sf_gateway/{FabricRuntime.GetActivationContext().ApplicationName.Replace("fabric:/", "")}/nginx.pid;");
+                sb.AppendLine($"pid nginx.pid;");
+         //   }
+
             sb.AppendLine("worker_processes  4;");
             sb.AppendLine("events {\n\tworker_connections  1024;\n}");
+
+           
+            sb.AppendLine($"error_log    {Path.GetFullPath("logs/error.log")};");
+
             sb.AppendLine("http {");
 
 
@@ -125,8 +156,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
             sb.AppendLine("\tclient_max_body_size 100m;");
 
-
-            File.WriteAllText("mime.types", WriteMimeTypes(sb, "mime.types").ToString());
+            var mimePath = $"{Path.GetDirectoryName(NginxConfigFullPath)}/mime.types";
+            File.WriteAllText(mimePath, WriteMimeTypes(sb, mimePath).ToString());
 
             sb.AppendLine("\tkeepalive_timeout          65;");
 
@@ -185,6 +216,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             sb.AppendLine("\tproxy_buffers              4 256k;");
             sb.AppendLine("\tproxy_busy_buffers_size    256k;");
 
+            sb.AppendLine($"\taccess_log   {Path.GetFullPath("logs/access.log")};");
+          //  sb.AppendLine($"\terror_log    {Path.GetFullPath("logs/error.log")};");
+
+           
+
 
 
             {
@@ -241,7 +277,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                     }
 
-                    sb.AppendLine($"\tproxy_cache_path  cache/{upstreamName}  levels=1:2    keys_zone={upstreamName}:10m inactive=24h  max_size=1g;");
+                    sb.AppendLine($"\tproxy_cache_path  {Path.GetFullPath("cache")}/{upstreamName}  levels=1:2    keys_zone={upstreamName}:10m inactive=24h  max_size=1g;");
 
 
                 }
@@ -385,7 +421,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             }
             sb.AppendLine("}");
 
-            File.WriteAllText("nginx.conf", sb.ToString());
+            File.WriteAllText(NginxConfigFullPath, sb.ToString());
         }
 
         private async Task<bool> SetupSsl(StringBuilder sb, GatewayServiceRegistrationData gatewayServiceRegistrationData, string serverName, CancellationToken token)
@@ -615,27 +651,45 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         private void LaunchNginxProcess(string arguments)
         {
+
+            _logger.LogInformation("Launching Nginx Processs: {arguments} with {username}", arguments,Environment.UserName);
+
             var codePackage = this.Context.CodePackageActivationContext.CodePackageName;
             var codePath = this.Context.CodePackageActivationContext.GetCodePackageObject(codePackage).Path;
             var res = File.Exists(Path.Combine(codePath, nginxVersion));
-            var nginxStartInfo = new ProcessStartInfo(Path.Combine(codePath, nginxVersion))
+
+            var nginxStartInfo = new ProcessStartInfo(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? Path.Combine(codePath, nginxVersion) : "/usr/sbin/nginx")
             {
                 WorkingDirectory = codePath,
                 UseShellExecute = false,
-                Arguments = arguments
+                Arguments = $"-p \"{Path.GetDirectoryName(NginxConfigFullPath)}\" {arguments}", RedirectStandardError = true, RedirectStandardOutput = true
             };
             var nginxProcess = new Process()
             {
                 StartInfo = nginxStartInfo
             };
             nginxProcess.Start();
+            Thread.Sleep(1000);
             try
             {
-                nginxProcessName = nginxProcess.ProcessName;
-            }
-            catch (Exception)
-            {
+                if (nginxProcess.HasExited){
+                    _logger.LogInformation(nginxProcess.StandardOutput.ReadToEnd());
+                    _logger.LogInformation(nginxProcess.StandardError.ReadToEnd());
+                }
+                else
+                {
+                    _logger.LogWarning(nginxProcess.StandardOutput.ReadToEnd());
+                    _logger.LogWarning(nginxProcess.StandardError.ReadToEnd());
+                }
 
+                _logger.LogInformation("Nginx started with {nginxProcessName} {HasExited}", nginxProcess.HasExited?"": nginxProcess.ProcessName, nginxProcess.HasExited);
+
+                nginxProcessName = nginxProcess.HasExited ? "" : nginxProcess.ProcessName;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "nginx failed to run with {arguments}",arguments);
+                throw;
             }
         }
 
@@ -643,7 +697,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         protected override Task OnCloseAsync(CancellationToken cancellationToken)
         {
             if (IsNginxRunning())
-                LaunchNginxProcess($"-c \"{Path.GetFullPath("nginx.conf")}\" -s quit");
+                LaunchNginxProcess($"-c \"{NginxConfigFullPath}\" -s quit");
 
 
             return base.OnCloseAsync(cancellationToken);
@@ -656,7 +710,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         protected override void OnAbort()
         {
             if (IsNginxRunning())
-                LaunchNginxProcess($"-c \"{Path.GetFullPath("nginx.conf")}\" -s quit");
+                LaunchNginxProcess($"-c \"{NginxConfigFullPath}\" -s quit");
 
 
 
@@ -664,8 +718,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         }
         private DateTimeOffset lastWritten = DateTimeOffset.MinValue;
 
+        public bool IsLinux => RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
 
-      
         public async Task<List<GatewayServiceRegistrationData>> GetGatewayServicesAsync(CancellationToken cancellationToken)
         {
             var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
@@ -813,12 +867,28 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             
            
         }
-      
+
+        public string NginxConfigFullPath => Path.GetFullPath("nginx.conf"); // IsLinux ? $"/mnt/sf_gateway/{Context.CodePackageActivationContext.ApplicationName.Replace("fabric:/", "")}/nginx.conf" : Path.GetFullPath("nginx.conf");
+
+
         protected override async Task RunAsync(CancellationToken cancellationToken)
         {
             var applicationName = this.Context.CodePackageActivationContext.ApplicationName;
             var actorServiceUri = new Uri($"{applicationName}/{nameof(GatewayManagementService)}");
 
+            _logger.LogInformation("Running as {user}",Environment.UserName);
+
+            //if (IsLinux)
+            //{
+            //    try
+            //    {
+            //        Directory.CreateDirectory(Path.GetDirectoryName(NginxConfigFullPath));
+            //    }catch(Exception ex)
+            //    {
+            //        _logger.LogInformation(ex, "Failed to create configuration folder");
+            //        throw;
+            //    }
+            //}
 
             RetryPolicy retryPolicy = Policy
             .Handle<Exception>()            
@@ -841,19 +911,30 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 await retryPolicy.ExecuteAsync(() => WriteConfigAsync(cancellationToken));
 
-                LaunchNginxProcess($"-c \"{Path.GetFullPath("nginx.conf")}\"");
+                if (!IsNginxRunning())
+                {
+                //    LaunchNginxProcess($"-T -c \"{NginxConfigFullPath}\"");
+                    LaunchNginxProcess($"-c \"{NginxConfigFullPath}\"");
+
+                }
 
 
 
                 while (true)
                 {
                     if (cancellationToken.IsCancellationRequested)
-                        LaunchNginxProcess($"-c \"{Path.GetFullPath("nginx.conf")}\" -s quit");
-                    cancellationToken.ThrowIfCancellationRequested();
+                    {
+                        LaunchNginxProcess($"-c \"{NginxConfigFullPath}\" -s quit");
+                        break;
+                    }
+                     
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
 
                     if (!IsNginxRunning())
-                        LaunchNginxProcess($"-c \"{Path.GetFullPath("nginx.conf")}\"");
+                    {
+                     //   LaunchNginxProcess($"-T -c \"{NginxConfigFullPath}\"");
+                        LaunchNginxProcess($"-c \"{NginxConfigFullPath}\"");
+                    }
 
                     var lastUpdated = await GetLastUpdatedAsync(cancellationToken);
                     //   if (allActorsUpdated.ContainsKey(gateway.GetActorId()))
@@ -868,7 +949,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
 
                             lastWritten = lastUpdated;
-                            LaunchNginxProcess($"-c \"{Path.GetFullPath("nginx.conf")}\" -s reload");
+                            LaunchNginxProcess($"-c \"{NginxConfigFullPath}\" -s reload");
                         }
 
                     }
@@ -878,7 +959,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             
             catch (Exception ex)
             {
-                _logger.LogWarning(new EventId(), ex, "RunAsync Failed");
+                _logger.LogWarning(ex, "RunAsync Failed");
                 throw;
             }
 

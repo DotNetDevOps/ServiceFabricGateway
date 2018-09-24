@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using System;
 using System.Linq;
@@ -12,9 +13,12 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Startup
     {
         private const string XForwardedPathBase = "X-Forwarded-PathBase";
         private readonly string serviceFabricKey;
-        public UseForwardedHeadersStartupFilter(string serviceFabricKey)
+        private readonly ILogger logger;
+
+        public UseForwardedHeadersStartupFilter(string serviceFabricKey, ILogger logger)
         {
             this.serviceFabricKey = serviceFabricKey;
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> nextBuilder)
@@ -32,6 +36,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Startup
                     {
                         if (!serviceFabricKey.FirstOrDefault().Equals(this.serviceFabricKey))
                         {
+                            logger.LogWarning("X-ServiceFabric-Key mismatch: {actual} {expected}", serviceFabricKey, this.serviceFabricKey);
                             context.Response.StatusCode = StatusCodes.Status410Gone;
                             return;
                         }

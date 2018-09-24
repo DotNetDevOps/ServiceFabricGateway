@@ -20,6 +20,6 @@
                                     AzureActiveDirectory="true"
                                     ServerCertThumbprint="0123456789012345678901234567890123456789" />
   -->
-  <ClusterConnectionParameters ConnectionEndpoint="sf-1709-3.westeurope.cloudapp.azure.com:19000" X509Credential="true" ServerCertThumbprint="EB6768C258FE021993C5A3ECEAE848DC413984A8" FindType="FindByThumbprint" FindValue="EB6768C258FE021993C5A3ECEAE848DC413984A8" StoreLocation="CurrentUser" StoreName="My" />
+  <ClusterConnectionParameters ConnectionEndpoint="sf-gateway-unix3.westeurope.cloudapp.azure.com:19000" X509Credential="true" ServerCertThumbprint="E978DA0A2B872707D46AC935167D4EE6059E1E6D" FindType="FindByThumbprint" FindValue="E978DA0A2B872707D46AC935167D4EE6059E1E6D" StoreLocation="CurrentUser" StoreName="My" />
   <ApplicationParameterFile Path="..\ApplicationParameters\TestCloud.xml" />
 </PublishProfile>

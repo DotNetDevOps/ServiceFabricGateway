@@ -1174,24 +1174,40 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         public async Task<string> GetChallengeResponseAsync(string hostname, CancellationToken requestAborted)
         {
-            var certs = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, CertGenerationState>>(STATE_CERTS_DATA_NAME);
-
-            using (var tx = this.StateManager.CreateTransaction())
+            try
             {
-                var resutlt = await certs.TryGetValueAsync(tx, hostname, TimeSpan.FromMinutes(1), requestAborted);
-                if (resutlt.HasValue)
+                logger.LogInformation("Getting Challenge Response Begin {hostname}",hostname);
+
+                var certs = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, CertGenerationState>>(STATE_CERTS_DATA_NAME);
+
+                logger.LogInformation("Getting Challenge Response {certsName} {hostname}", certs.Name, hostname);
+
+                using (var tx = this.StateManager.CreateTransaction())
                 {
-                    while (resutlt.Value.HttpChallengeInfo == null)
+                    var resutlt = await certs.TryGetValueAsync(tx, hostname, TimeSpan.FromMinutes(1), requestAborted);
+
+                    logger.LogInformation("Getting Challenge Response {certsName} {hostname}: hostname was {found}", certs.Name, hostname,resutlt.HasValue);
+                    if (resutlt.HasValue)
                     {
-                        await Task.Delay(2000);
-                        resutlt = await certs.TryGetValueAsync(tx, hostname, TimeSpan.FromMinutes(1), requestAborted);
+                        while (resutlt.Value.HttpChallengeInfo == null)
+                        {
+                            await Task.Delay(2000);
+                            resutlt = await certs.TryGetValueAsync(tx, hostname, TimeSpan.FromMinutes(1), requestAborted);
+                            logger.LogInformation("Getting Challenge Response waiting {certsName} {hostname}: {challenge}", certs.Name, hostname, resutlt.Value.HttpChallengeInfo.KeyAuthString);
 
+
+                        }
+
+                        logger.LogInformation("Getting Challenge Response {certsName} {hostname}: {challenge}", certs.Name, hostname, resutlt.Value.HttpChallengeInfo.KeyAuthString);
+
+                        return resutlt.Value.HttpChallengeInfo.KeyAuthString;
                     }
-
-                    return resutlt.Value.HttpChallengeInfo.KeyAuthString;
                 }
             }
-
+            finally
+            {
+                logger.LogInformation("Getting Challenge Response End {hostname}",hostname);
+            }
 
 
 

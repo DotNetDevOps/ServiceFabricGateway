@@ -177,7 +177,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 #if NETCORE10
             services.AddSingleton<IServiceProviderFactory<IServiceCollection>>(new UnityServiceProviderFactory(Container));
 #endif
-            services.AddSingleton<IStartupFilter>(new UseForwardedHeadersStartupFilter($"{this.Context.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{Context.CodePackageActivationContext.CodePackageVersion}"));
+            services.AddSingleton<IStartupFilter>(new UseForwardedHeadersStartupFilter($"{this.Context.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{Context.CodePackageActivationContext.CodePackageVersion}", _logger));
 
         }
 

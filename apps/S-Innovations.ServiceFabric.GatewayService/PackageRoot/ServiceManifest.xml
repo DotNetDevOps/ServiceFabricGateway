@@ -27,11 +27,11 @@
   </ServiceTypes>
   <!-- Code package is your service executable. -->
   <CodePackage Name="Code" Version="1.0.0">
-    <SetupEntryPoint>
+    <!--<SetupEntryPoint>
       <ExeHost>
         <Program>setupAcl.cmd</Program>
       </ExeHost>
-    </SetupEntryPoint>
+    </SetupEntryPoint>-->
     <EntryPoint>
       <ExeHost IsExternalExecutable="1">
         <Program>dotnet</Program>
