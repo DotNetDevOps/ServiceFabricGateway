@@ -62,10 +62,11 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore
 
 
         public void BuildUp(IBuilderContext context)
-        {    
+        {
             context.Existing = null == context.ParentContext
-                             ? context.ParentContext.Container.Resolve<ILoggerFactory>().CreateLogger(context.OriginalBuildKey.Name ?? string.Empty)
-                             : context.Container.Resolve<ILoggerFactory>().CreateLogger(context.ParentContext.BuildKey.Type);
+                             ? context.Container.Resolve<ILoggerFactory>().CreateLogger(context.OriginalBuildKey?.Name ?? string.Empty)
+                             : context.ParentContext.Container.Resolve<ILoggerFactory>().CreateLogger(context.ParentContext?.BuildKey?.Type ?? this.GetType());
+
             context.BuildComplete = true;
         }
 

@@ -33,6 +33,30 @@ using System.Runtime.InteropServices;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
+    public static class ShellHelper
+    {
+        public static string Bash(this string cmd)
+        {
+            var escapedArgs = cmd.Replace("\"", "\\\"");
+
+            var process = new Process()
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "/bin/bash",
+                    Arguments = $"-c \"{escapedArgs}\"",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                }
+            };
+            process.Start();
+            string result = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+            return result;
+        }
+    }
+
     /// <summary>
     /// A specialized stateless service for hosting ASP.NET Core web apps.
     /// </summary>
@@ -96,10 +120,12 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         private bool IsNginxRunning()
         {
-         //   if (IsLinux)
+          // if (IsLinux)
             {
-                //var pidFile = $"/mnt/sf_gateway/{Context.CodePackageActivationContext.ApplicationName.Replace("fabric:/", "")}/nginx.pid";
-                var pidFile = Path.GetFullPath("nginx.pid");
+                var pidFile = IsLinux ?
+                    $"/mnt/sf_gateway/{Context.CodePackageActivationContext.ApplicationName.Replace("fabric:/", "")}/nginx.pid":
+                    "logs/nginx.pid";
+              //  var pidFile = Path.GetFullPath("nginx.pid");
                 if (File.Exists(pidFile) && int.TryParse(File.ReadAllText(pidFile), out int pid))
                 {
                      
@@ -108,6 +134,28 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 {
                     File.Delete(pidFile);
                 }
+
+
+                //var test = Process.GetProcessesByName("nginx");
+                if (IsLinux)
+                {
+                    var processes = "ps -ef".Bash().Split("\n",StringSplitOptions.RemoveEmptyEntries);
+                    _logger.LogInformation(string.Join("\n", processes));
+
+                    var cmdIndex = processes.FirstOrDefault().IndexOf("CMD");
+
+                    var nginx = processes.Where(c=>c.Length > cmdIndex)
+                        .Select(c => c.Substring(cmdIndex))
+                        .Where(cmd => cmd.StartsWith("nginx: master")).ToArray();
+
+                    _logger.LogInformation(string.Join("\n",nginx));
+                }
+
+                //foreach(var process in test)
+                //{
+                //    _logger.LogInformation("Running Nginx: {name} {id} {args}",process.ProcessName, process.Id);
+                //}
+
                 return false;
             }
 
@@ -135,13 +183,13 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
             var sb = new StringBuilder();
 
-            //if (IsLinux)
-            //{
+            if (IsLinux)
+            {
                 //https://unix.stackexchange.com/questions/134301/why-does-nginx-starts-process-as-root
                 //    sb.AppendLine($"user {Environment.UserName};");
-                //     sb.AppendLine($"pid /mnt/sf_gateway/{FabricRuntime.GetActivationContext().ApplicationName.Replace("fabric:/", "")}/nginx.pid;");
-                sb.AppendLine($"pid nginx.pid;");
-         //   }
+                    sb.AppendLine($"pid /mnt/sf_gateway/{FabricRuntime.GetActivationContext().ApplicationName.Replace("fabric:/", "")}/nginx.pid;");
+               // sb.AppendLine($"pid nginx.pid;");
+            }
 
             sb.AppendLine("worker_processes  4;");
             sb.AppendLine("events {\n\tworker_connections  1024;\n}");
@@ -239,7 +287,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                     GatewayServiceRegistrationData[] uniques = GetUniueGatewayRegistrations(upstreams);
 
-                    var upstreamName = upstreams.Key.AbsoluteUri.Split('/').Last().Replace('.', '_');
+                    var upstreamName = upstreams.Key.AbsoluteUri.Split('/').Last().Replace('.', '_').ToLower();
 
                     _logger.LogInformation("Writing upstream {upstreamName} for {serviceName}",upstreamName, upstreams.Key);
                 
@@ -264,12 +312,13 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     }
                     sb.AppendLine("\t}");
 
+                    var cachePath = Path.Combine(Path.GetDirectoryName(NginxConfigFullPath),"cache",upstreamName);
 
                     try
                     {
-                        if (Directory.Exists(Path.Combine(codePath, $"cache/{upstreamName}")))
+                        if (Directory.Exists(cachePath))
                         {
-                            Directory.Delete(Path.Combine(codePath, $"cache/{upstreamName}"), true);
+                            Directory.Delete(cachePath, true);
                         }
                     }
                     catch (Exception ex)
@@ -277,7 +326,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                     }
 
-                    sb.AppendLine($"\tproxy_cache_path  {Path.GetFullPath("cache")}/{upstreamName}  levels=1:2    keys_zone={upstreamName}:10m inactive=24h  max_size=1g;");
+                    sb.AppendLine($"\tproxy_cache_path  {cachePath}  levels=1:2    keys_zone={upstreamName}:10m inactive=24h  max_size=1g;");
 
 
                 }
@@ -404,7 +453,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         }
 
                         {
-                            var upstreamName = this.Context.ServiceName.AbsoluteUri.Split('/').Last().Replace('.', '_');
+                            var upstreamName = this.Context.ServiceName.AbsoluteUri.Split('/').Last().Replace('.', '_').ToLower();
 
                             await WriteProxyPassLocation(2,
                                 "/.well-known/acme-challenge/", "http://" + upstreamName, sb,
@@ -508,7 +557,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         private static async Task WriteProxyPassLocation(int level, string location, string url, StringBuilder sb_outer, string uniquekey, string upstreamName, GatewayServiceRegistrationData   gatewayServiceRegistrationData)
         {
-          
+            url = url.ToLower();
+
             var tabs = string.Join("", Enumerable.Range(0, level + 1).Select(r => "\t"));
 
             sb_outer.AppendLine($"{string.Join("", Enumerable.Range(0, level).Select(r => "\t"))}location {location} {{");
@@ -678,8 +728,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 }
                 else
                 {
-                    _logger.LogWarning(nginxProcess.StandardOutput.ReadToEnd());
-                    _logger.LogWarning(nginxProcess.StandardError.ReadToEnd());
+                    //_logger.LogWarning(nginxProcess.StandardOutput.ReadToEnd());
+                   // _logger.LogWarning(nginxProcess.StandardError.ReadToEnd());
                 }
 
                 _logger.LogInformation("Nginx started with {nginxProcessName} {HasExited}", nginxProcess.HasExited?"": nginxProcess.ProcessName, nginxProcess.HasExited);
@@ -868,7 +918,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
            
         }
 
-        public string NginxConfigFullPath => Path.GetFullPath("nginx.conf"); // IsLinux ? $"/mnt/sf_gateway/{Context.CodePackageActivationContext.ApplicationName.Replace("fabric:/", "")}/nginx.conf" : Path.GetFullPath("nginx.conf");
+        public string NginxConfigFullPath => IsLinux ? $"/mnt/sf_gateway/{Context.CodePackageActivationContext.ApplicationName.Replace("fabric:/", "")}/nginx.conf" : Path.GetFullPath("nginx.conf");
 
 
         protected override async Task RunAsync(CancellationToken cancellationToken)
@@ -878,17 +928,23 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
             _logger.LogInformation("Running as {user}",Environment.UserName);
 
-            //if (IsLinux)
-            //{
-            //    try
-            //    {
-            //        Directory.CreateDirectory(Path.GetDirectoryName(NginxConfigFullPath));
-            //    }catch(Exception ex)
-            //    {
-            //        _logger.LogInformation(ex, "Failed to create configuration folder");
-            //        throw;
-            //    }
-            //}
+            if (IsLinux)
+            {
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(NginxConfigFullPath));
+                    Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(NginxConfigFullPath),"cache"));
+                    Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(NginxConfigFullPath), "html"));
+                    Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(NginxConfigFullPath), "temp"));
+
+
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogInformation(ex, "Failed to create configuration folder");
+                    throw;
+                }
+            }
 
             RetryPolicy retryPolicy = Policy
             .Handle<Exception>()            
