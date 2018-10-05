@@ -70,7 +70,7 @@ namespace SInnovations.ServiceFabric.Storage.Services
                 ResourceTypes = SharedAccessAccountResourceTypes.Container | SharedAccessAccountResourceTypes.Object | SharedAccessAccountResourceTypes.Service,
                 Services = SharedAccessAccountServices.Blob | SharedAccessAccountServices.File | SharedAccessAccountServices.Queue | SharedAccessAccountServices.Table,
         //        SharedAccessStartTime = DateTimeOffset.UtcNow.AddMinutes(-5),
-                SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddDays(14)
+                SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddMonths(3)
             });
         }
 
