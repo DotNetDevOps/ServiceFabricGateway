@@ -15,6 +15,7 @@
     <Parameter Name="APPLICATION_INSIGHTS" DefaultValue="" />
     <Parameter Name="GatewayService_Ports_Http" DefaultValue="8498" />
     <Parameter Name="GatewayService_Ports_Https" DefaultValue="8500" />
+    <Parameter Name="GatewayManagementService_PlacementConstraints" DefaultValue="((NodeTypeName==nt1vm) &amp;&amp; (NodeName==_nt1vm_0 ||  NodeName==_nt1vm_1 || NodeName==_nt1vm_2 || NodeName==_nt1vm_3 || NodeName==_nt1vm_4))" />
   </Parameters>
   <!-- Import the ServiceManifest from the ServicePackage. The ServiceManifestName and ServiceManifestVersion 
        should match the Name and Version attributes of the ServiceManifest element defined in the 
@@ -63,21 +64,25 @@
     <Service Name="GatewayService">
       <StatelessService ServiceTypeName="GatewayServiceType" InstanceCount="[GatewayService_InstanceCount]">
         <SingletonPartition />
+        <PlacementConstraints>[GatewayManagementService_PlacementConstraints]</PlacementConstraints>
       </StatelessService>
     </Service>
     <Service Name="KeyVaultService">
       <StatelessService ServiceTypeName="KeyVaultServiceType">
         <SingletonPartition />
+        <PlacementConstraints>[GatewayManagementService_PlacementConstraints]</PlacementConstraints>
       </StatelessService>
     </Service>
     <Service Name="ResourceProviderService">
       <StatelessService ServiceTypeName="ResourceProviderServiceType">
         <SingletonPartition />
+        <PlacementConstraints>[GatewayManagementService_PlacementConstraints]</PlacementConstraints>
       </StatelessService>
     </Service>
     <Service Name="GatewayManagementService">
       <StatefulService ServiceTypeName="GatewayManagementServiceType">
         <UniformInt64Partition PartitionCount="3" LowKey="-9223372036854775808" HighKey="9223372036854775807" />
+        <PlacementConstraints>[GatewayManagementService_PlacementConstraints]</PlacementConstraints>
       </StatefulService>
     </Service>
   </DefaultServices>
