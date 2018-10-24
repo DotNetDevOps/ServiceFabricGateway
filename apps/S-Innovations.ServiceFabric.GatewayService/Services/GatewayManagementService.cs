@@ -107,13 +107,13 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
 
  
-    public interface IServiceNotificationService:IService
-    {
-        Task RegisterServiceNotification(string  serviceName);
-        Task ClearProxyAsync(string serviceUri, string endpoints);
-    }
+    //public interface IServiceNotificationService:IService
+    //{
+    //    Task RegisterServiceNotification(string  serviceName);
+    //    Task ClearProxyAsync(string serviceUri, string endpoints);
+    //}
     public sealed class GatewayManagementService : StatefulService,
-        IGatewayManagementService, ICloudFlareZoneService, IServiceFabricIOrdersService, IServiceFabricIRS256SignerStore, IServiceNotificationService
+        IGatewayManagementService, ICloudFlareZoneService, IServiceFabricIOrdersService, IServiceFabricIRS256SignerStore //, IServiceNotificationService
     {
         public const string STATE_LAST_UPDATED_NAME = "lastUpdated";
         public const string STATE_PROXY_DATA_NAME = "ProxyDictionary";
@@ -122,7 +122,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         //  private readonly CloudFlareZoneService cloudFlareZoneService;
         private readonly StorageConfiguration storage;
-        private readonly FabricClient fabricClient;
+        private readonly FabricClient fabricClient1 = new FabricClient();
         private readonly LetsEncryptService<AcmeContext> letsEncrypt;
         private readonly IAcmeClientService<AcmeContext> acmeClientService;
         private readonly ILogger logger;
@@ -132,7 +132,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         public GatewayManagementService(
             StatefulServiceContext context,
             StorageConfiguration storage,
-            FabricClient fabricClient,
+           // FabricClient fabricClient,
             LetsEncryptService<AcmeContext> letsEncrypt,
             IAcmeClientService<AcmeContext> acmeClientService,
             ILoggerFactory loggerFactory)
@@ -140,7 +140,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         {
 
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
-            this.fabricClient = fabricClient ?? throw new ArgumentNullException(nameof(fabricClient));
+           // this.fabricClient = fabricClient ?? throw new ArgumentNullException(nameof(fabricClient));
             this.letsEncrypt = letsEncrypt ?? throw new ArgumentNullException(nameof(letsEncrypt));
             this.acmeClientService = acmeClientService ?? throw new ArgumentNullException(nameof(acmeClientService));
 
@@ -173,25 +173,36 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             await certContainer.CreateIfNotExistsAsync();
 
 
+            if (!notificationRegistered)
+            {
+                fabricClient1.ServiceManager.ServiceNotificationFilterMatched += OnNotification;
+                notificationRegistered = true;
+                logger.LogInformation("ServiceNotificationEvent registered for on {node}", Context.NodeContext.NodeName);
+
+
+            }
+
 
             var gateways = await GatewayManagementServiceClient.TimeOutRetry.ExecuteAsync(GetGatewayServicesAsync, cancellationToken);
              
             foreach (var gateway in gateways)
             {
-                try
-                { 
-                    await GatewayManagementServiceClient.TimeOutRetry.ExecuteAsync(async () =>
-                    {
+                //try
+                //{ 
+                //    await GatewayManagementServiceClient.TimeOutRetry.ExecuteAsync(async () =>
+                //    {
 
-                        await GatewayManagementServiceClient.GetProxy<IServiceNotificationService>(this.Context.ServiceName.AbsoluteUri, gateway.ServiceName.AbsoluteUri)
-                        .RegisterServiceNotification(gateway.ServiceName.AbsoluteUri);
+                //        await GatewayManagementServiceClient.GetProxy<IServiceNotificationService>(this.Context.ServiceName.AbsoluteUri, gateway.ServiceName.AbsoluteUri)
+                //        .RegisterServiceNotification(gateway.ServiceName.AbsoluteUri);
 
-                    });
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Failed to register initial notification in Registering gateway service {key}", gateway.Key);
-                }
+                //    });
+                //}
+                //catch (Exception ex)
+                //{
+                //    logger.LogWarning(ex, "Failed to register initial notification in Registering gateway service {key}", gateway.Key);
+                //}
+
+                await RegisterServiceNotification(gateway.ServiceName.AbsoluteUri);
             }
 
            
@@ -850,26 +861,28 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 try
                 {
 
-                    await GatewayManagementServiceClient.GetProxy<IServiceNotificationService>(this.Context.ServiceName.AbsoluteUri, data.ServiceName.AbsoluteUri)
-                        .RegisterServiceNotification(data.ServiceName.AbsoluteUri);
+                  //  await GatewayManagementServiceClient.GetProxy<IServiceNotificationService>(this.Context.ServiceName.AbsoluteUri, data.ServiceName.AbsoluteUri)
+                  //      .RegisterServiceNotification(data.ServiceName.AbsoluteUri);
+                    await RegisterServiceNotification(data.ServiceName.AbsoluteUri);
                 }
                 catch (Exception ex)
                 {
                     logger.LogWarning(ex, "Failed to register notification in Registering gateway service {key}", data.Key);
                 }
 
-                if(!notificationRegistered)
-                {
-                    fabricClient.ServiceManager.ServiceNotificationFilterMatched += OnNotification;
-                    notificationRegistered = true;
-                    logger.LogInformation("ServiceNotificationEvent registered for on {node}",Context.NodeContext.NodeName);
+
+                //if(!notificationRegistered)
+                //{
+                //    fabricClient1.ServiceManager.ServiceNotificationFilterMatched += OnNotification;
+                //    notificationRegistered = true;
+                //    logger.LogInformation("ServiceNotificationEvent registered for on {node}",Context.NodeContext.NodeName);
 
 
-                }
+                //}
 
                 //Clean up old nodes
 
-                var partitions = await fabricClient.QueryManager.GetPartitionListAsync(data.ServiceName);
+                var partitions = await fabricClient1.QueryManager.GetPartitionListAsync(data.ServiceName);
                 var endpoints = new List<string>() { };
                 foreach (var part in partitions)
                 {
@@ -902,31 +915,42 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             logger.LogInformation("End Registering gateway service {key}", data.Key);
         }
 
-        public async Task RegisterServiceNotification(string serviceNameUri)
+        private Dictionary<string, long> notifications = new Dictionary<string, long>();
+        private SemaphoreSlim notificationsSemaphore = new SemaphoreSlim(1,1);
+
+        public async Task RegisterServiceNotification(string serviceName)
         {
-            
-                var notifications = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, long>>("ServiceNotifications");
-                using (var tx = this.StateManager.CreateTransaction())
+
+           
+            if (!notifications.ContainsKey(serviceName))
+            {
+                try
                 {
-                    await notifications.GetOrAddAsync(tx, serviceNameUri, (serviceName) =>
+                    await notificationsSemaphore.WaitAsync();
+                    if (!notifications.ContainsKey(serviceName))
                     {
-                        
                         logger.LogInformation("Registering notification filter for {serviceName}", serviceName);
                         var filterDescription = new ServiceNotificationFilterDescription
                         {
                             Name = new Uri(serviceName) // new Uri("fabric:"),
-                                                    // MatchNamePrefix = true,
-                                                    // MatchPrimaryChangeOnly = true
+                                                        // MatchNamePrefix = true,
+                                                        // MatchPrimaryChangeOnly = true
                         };
 
-                     //   fabricClient.ServiceManager.ServiceNotificationFilterMatched += OnNotification;
 
-                        return fabricClient.ServiceManager.RegisterServiceNotificationFilterAsync(filterDescription).GetAwaiter().GetResult();
-                    });
+                        notifications[serviceName] = await fabricClient1.ServiceManager.RegisterServiceNotificationFilterAsync(filterDescription);
 
-                    await tx.CommitAsync();
+                    }
+
                 }
-           
+                finally
+                {
+                    notificationsSemaphore.Release();
+                }
+            }
+               
+            
+
         }
 
         public async Task ClearProxyAsync(string ServiceNameUri, string endpointsArray)
@@ -1017,14 +1041,17 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
            //  fabricClient.QueryManager.GetServiceListAsync(new Uri(""),new Uri("")).Result.First().
             var castedEventArgs = (FabricClient.ServiceManagementClient.ServiceNotificationEventArgs)e;
            
-            logger.LogInformation("ServiceNotificationEventArgs was triggered for {@notification} on {node}",castedEventArgs.Notification,Context.NodeContext.NodeName);
-
+           
            // fabricClient.QueryManager.getin(new Uri("")).Result.First().
 
             var notification = castedEventArgs.Notification;
             //castedEventArgs.Notification.Endpoints.First();
 
             var endpoints = notification.Endpoints.SelectMany(en => JToken.Parse(en.Address).ToObject<EndpointsModel>().Endpoints.Values).ToArray();
+
+            logger.LogInformation("ServiceNotificationEventArgs was triggered for {@notification} on {node} with {@endpoints}",
+                castedEventArgs.Notification, Context.NodeContext.NodeName,endpoints);
+
 
             //Loop over all partitions to clean up
             //var partitions = await fabricClient.QueryManager.GetPartitionListAsync(this.Context.ServiceName);
@@ -1039,7 +1066,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
 
             //}
-
+            // logger.LogInformation("Registering gateway service {key} found {@endpoints} on {node}", data.Key, endpoints, Context.NodeContext.NodeName);
             await ClearProxyAsync(notification.ServiceName.AbsoluteUri, string.Join(",", endpoints));
 
 
