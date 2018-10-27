@@ -35,6 +35,7 @@ using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.AspNetCore.TelemetryInitializers;
+using Microsoft.ApplicationInsights.Extensibility.Implementation;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 {
@@ -219,9 +220,11 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                              //   .ConfigureServices((services)=>{ services.AddTransient<IStartupFilter, UseForwardedHeadersStartupFilter>(); })
                                 .UseContentRoot(Directory.GetCurrentDirectory());
 
-                            if (Container.IsRegistered<IConfigureOptions<ApplicationInsights>>())
+                            var appInsightKey=Container.Resolve<IOptions<ApplicationInsights>>().Value?.InstrumentationKey;
+
+                            if (!string.IsNullOrEmpty(appInsightKey))
                             {
-                                 builder.UseApplicationInsights(Container.Resolve<IOptions<ApplicationInsights>>().Value?.InstrumentationKey);
+                                 builder.UseApplicationInsights(appInsightKey);
                                 
                             }
 
@@ -474,18 +477,21 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
         private readonly ITelemetryProcessor next;
 
         private readonly AdaptiveSamplingTelemetryProcessor samplingProcessor;
+        private readonly AdaptiveSamplingTelemetryProcessor serviceRemotingProcessor;
 
         public AggressivelySampleFastRequests(ITelemetryProcessor next)
         {
             this.next = next;
-            this.samplingProcessor = new AdaptiveSamplingTelemetryProcessor(this.next)
+            this.samplingProcessor = new AdaptiveSamplingTelemetryProcessor(this.next); 
+
+            this.serviceRemotingProcessor = new AdaptiveSamplingTelemetryProcessor(this.next)
             {
-                //ExcludedTypes = "Event", // exclude custom events from being sampled
-                //MaxTelemetryItemsPerSecond = 1, // default: 5 calls/sec
-                //SamplingPercentageIncreaseTimeout = TimeSpan.FromSeconds(1), // default: 2 min
-                //SamplingPercentageDecreaseTimeout = TimeSpan.FromSeconds(1), // default: 30 sec
-                //EvaluationInterval = TimeSpan.FromSeconds(1), // default: 15 sec
-                //InitialSamplingPercentage = 100, // default: 100%
+                ExcludedTypes = "Event", // exclude custom events from being sampled
+                MaxTelemetryItemsPerSecond = 1, // default: 5 calls/sec
+                SamplingPercentageIncreaseTimeout = TimeSpan.FromSeconds(1), // default: 2 min
+                SamplingPercentageDecreaseTimeout = TimeSpan.FromSeconds(1), // default: 30 sec
+                EvaluationInterval = TimeSpan.FromSeconds(1), // default: 15 sec
+                InitialSamplingPercentage = 25, // default: 100%
             };
         }
 
@@ -500,8 +506,12 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
             // check the telemetry type and duration
             if (item is RequestTelemetry d)
             {
-              
-                if (d.Duration < TimeSpan.FromMilliseconds(500))
+                if (d.Context.GetInternalContext().SdkVersion.StartsWith("serviceremoting"))
+                {
+                    this.serviceRemotingProcessor.Process(item);
+                    return;
+                }
+                if (d.Duration < TimeSpan.FromMilliseconds(200))
                 {
                     // let sampling processor decide what to do
                     // with this fast incoming request
