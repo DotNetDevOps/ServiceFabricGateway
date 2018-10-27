@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -42,16 +43,31 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Startup
                         }
                     }
 
-                    if (context.Request.Headers.TryGetValue(XForwardedPathBase, out StringValues value))
+                    var original = context.Request.PathBase;
+                    try
                     {
-                        context.Request.PathBase = new PathString(value);
+                        if (context.Request.Headers.TryGetValue(XForwardedPathBase, out StringValues value))
+                        {
+                            context.Request.PathBase = new PathString(value);
+                        }
+
+
+                        await next();
+
+  
+                    }
+                    finally
+                    {
+                        context.Request.Path = context.Request.PathBase + context.Request.Path;
+                        context.Request.PathBase= original;
+                       
                     }
 
-
-                    await next();
                 });
 
                 nextBuilder(builder);
+
+
             };
         }
 

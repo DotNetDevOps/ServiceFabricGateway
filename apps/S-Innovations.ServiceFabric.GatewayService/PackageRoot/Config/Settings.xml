@@ -22,4 +22,8 @@
     <Parameter Name="SslOptions" Value="{'Enabled':false,'SignerEmail':'info@earthml.com','UseHttp01Challenge':false}" />
     <Parameter Name="Properties" Value="{'CloudFlareZoneId':'ac1d153353eebc8508f7bb31ef1ab46c'}" />
   </Section>
+
+  <Section Name="ApplicationInsights">
+    <Parameter Name="InstrumentationKey" Value="00000000-0000-0000-0000-000000000000"/>
+  </Section>
 </Settings>

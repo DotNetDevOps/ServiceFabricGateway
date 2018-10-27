@@ -20,6 +20,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Unity;
 using SInnovations.ServiceFabric.Gateway.Common.Extensions;
+using Microsoft.ApplicationInsights.Extensibility;
 
 //[assembly: FabricTransportServiceRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
 //[assembly: FabricTransportActorRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
@@ -219,11 +220,11 @@ namespace SInnovations.ServiceFabric.GatewayService
                 app.UseDeveloperExceptionPage();
             }
 
-            //var telemetryConfiguration = app.ApplicationServices.GetService<TelemetryConfiguration>();
-            //var builder = telemetryConfiguration.TelemetryProcessorChainBuilder;
+          //  var telemetryConfiguration = app.ApplicationServices.GetService<TelemetryConfiguration>();
+          //  var builder = telemetryConfiguration.TelemetryProcessorChainBuilder;
 
-            //builder.Use((next) => new CustomTelemetryProcessor(next));
-            //builder.Build();
+           // builder.Use((next) => new CustomTelemetryProcessor(next));
+          //  builder.Build();
 
             app.UseCors("GatewayManagement");
 

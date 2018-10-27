@@ -11,6 +11,7 @@
     <Parameter Name="GatewayReverseProxyLocation" Value="/gateway/" />
     <Parameter Name="GatewaySslOptions" Value="{'Enabled':true,'SignerEmail':'pks@carshopper.dk','UseHttp01Challenge':true}" />
     <Parameter Name="GatewayProperties" Value="{}" />
-    <Parameter Name="APPLICATION_INSIGHTS" Value="dc477b2a-065d-4e71-a254-174bcba96fbd" />
+    <Parameter Name="APPLICATION_INSIGHTS" Value="e810a72e-f168-4fc6-b3f8-dfd30b6feb7f" />
+    <Parameter Name="GatewayManagementService_PlacementConstraints" Value="" />
   </Parameters>
 </Application>

@@ -31,6 +31,10 @@ using Microsoft.ServiceFabric.Services.Remoting.Client;
 using SInnovations.ServiceFabric.Gateway.Common.Extensions;
 using System.Linq;
 using Unity.Microsoft.DependencyInjection;
+using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.ApplicationInsights.AspNetCore.TelemetryInitializers;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 {
@@ -121,6 +125,10 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
     }
     public class MyServiceRemotingRequestTrackingTelemetryModule : ServiceRemotingRequestTrackingTelemetryModule
     {
+        public MyServiceRemotingRequestTrackingTelemetryModule()
+        {
+
+        }
         protected override void Dispose(bool disposing)
         {
             try
@@ -212,7 +220,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
                             if (Container.IsRegistered<IConfigureOptions<ApplicationInsights>>())
                             {
-                                 builder.UseApplicationInsights(Container.Resolve<ApplicationInsights>().InstrumentationKey);
+                                 builder.UseApplicationInsights(Container.Resolve<IOptions<ApplicationInsights>>().Value?.InstrumentationKey);
+                                
                             }
 
 
@@ -226,7 +235,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                                     .AddSingleton<ITelemetryInitializer>((serviceProvider) => FabricTelemetryInitializerExtension.CreateFabricTelemetryInitializer(serviceContext))
                                     .AddSingleton<ITelemetryModule>(new MyServiceRemotingDependencyTrackingTelemetryModule())
                                     .AddSingleton<ITelemetryModule>(new MyServiceRemotingRequestTrackingTelemetryModule())
-                                    .AddSingleton<ITelemetryInitializer>(new CodePackageVersionTelemetryInitializer());
+                                    .AddSingleton<ITelemetryInitializer>(new CodePackageVersionTelemetryInitializer())
+                                    .AddSingleton<ITelemetryModule>(new MyTestModule());
 
                              
 
@@ -438,6 +448,82 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
             
         }
     }
+
+    internal class MyTestModule : ITelemetryModule
+    {
+        public MyTestModule()
+        {
+        }
+
+        public void Initialize(TelemetryConfiguration configuration)
+        {
+
+            configuration.TelemetryChannel.DeveloperMode = false;
+
+            configuration.TelemetryProcessorChainBuilder
+            .Use((next) => { return new AggressivelySampleFastRequests(next); })
+            
+            .Use((next) => { return new AdaptiveSamplingTelemetryProcessor(next); })
+            .Build();
+
+        }
+    }
+    internal class AggressivelySampleFastRequests : ITelemetryProcessor
+    {
+        private readonly ITelemetryProcessor next;
+
+        private readonly AdaptiveSamplingTelemetryProcessor samplingProcessor;
+
+        public AggressivelySampleFastRequests(ITelemetryProcessor next)
+        {
+            this.next = next;
+            this.samplingProcessor = new AdaptiveSamplingTelemetryProcessor(this.next)
+            {
+                //ExcludedTypes = "Event", // exclude custom events from being sampled
+                //MaxTelemetryItemsPerSecond = 1, // default: 5 calls/sec
+                //SamplingPercentageIncreaseTimeout = TimeSpan.FromSeconds(1), // default: 2 min
+                //SamplingPercentageDecreaseTimeout = TimeSpan.FromSeconds(1), // default: 30 sec
+                //EvaluationInterval = TimeSpan.FromSeconds(1), // default: 15 sec
+                //InitialSamplingPercentage = 100, // default: 100%
+            };
+        }
+
+        public void Process(ITelemetry item)
+        {
+            if (!string.IsNullOrEmpty(item.Context.Operation.SyntheticSource)) { return; }
+
+            if (item is DependencyTelemetry dependency && dependency.Duration.TotalMilliseconds < 350)
+            {
+                return;
+            }
+            // check the telemetry type and duration
+            if (item is RequestTelemetry d)
+            {
+              
+                if (d.Duration < TimeSpan.FromMilliseconds(500))
+                {
+                    // let sampling processor decide what to do
+                    // with this fast incoming request
+                    this.samplingProcessor.Process(item);
+                    return;
+                }
+            }
+
+            if (item is TraceTelemetry trace)
+            {
+                if (trace.Properties.TryGetValue("SourceContext", out var category) &&
+                    category == "Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware")
+                {
+                    return;
+                }
+            }
+
+
+            // in all other cases simply call next
+            this.next.Process(item);
+        }
+    }
+
     /// <summary>
     /// A specialized stateless service for hosting ASP.NET Core web apps.
     /// </summary>

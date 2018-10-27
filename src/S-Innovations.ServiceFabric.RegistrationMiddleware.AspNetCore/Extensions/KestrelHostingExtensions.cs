@@ -15,6 +15,7 @@ using Unity.Injection;
 using Unity.Lifetime;
 using Microsoft.Extensions.Options;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions
 {
@@ -41,13 +42,19 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
                         }));
 
                 container.RegisterInstance(new LoggerConfiguration());
-                container.RegisterType<LoggerFactory>(new HierarchicalLifetimeManager(),
+                container.RegisterType<LoggerFactory>(new ContainerControlledLifetimeManager(),
                      new InjectionFactory((c) =>
                      {
+                         var filters = new LoggerFilterOptions()
+                             .AddFilter("System", LogLevel.Warning)
+                             .AddFilter("Microsoft", LogLevel.Warning)
+                             .AddFilter("Microsoft.AspNetCore.Authentication", LogLevel.Information);
 
-                        
+                         var factory = new LoggerFactory(Enumerable.Empty<ILoggerProvider>(),filters);
 
-                         return new LoggerFactory().AddSerilog(c.Resolve<Serilog.Core.Logger>());
+                       
+
+                         return factory.AddSerilog(c.Resolve<Serilog.Core.Logger>());
 
                      }));
                 container.RegisterType<ILoggerFactory, LoggerFactory>();

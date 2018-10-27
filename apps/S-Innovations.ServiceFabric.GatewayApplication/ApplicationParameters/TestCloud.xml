@@ -8,5 +8,6 @@
     <Parameter Name="GatewayServerName" Value="sf-gateway-unix.westeurope.cloudapp.azure.com" />
     <Parameter Name="GatewaySslOptions" Value="{'Enabled':true,'SignerEmail':'info@earthml.com','UseHttp01Challenge':true}" />
     <Parameter Name="APPLICATION_INSIGHTS" Value="5d86688e-ff67-4b5b-8d87-021d6143af5a" />
+    <Parameter Name="GatewayManagementService_PlacementConstraints" Value="((NodeTypeName==nt1vm) &amp;&amp; (NodeName==_nt1vm_0 ||  NodeName==_nt1vm_1 || NodeName==_nt1vm_2 || NodeName==_nt1vm_3 || NodeName==_nt1vm_4))" />
   </Parameters>
 </Application>

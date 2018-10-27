@@ -30,6 +30,7 @@ using Unity;
 using SInnovations.ServiceFabric.Gateway.Common.Extensions;
 using Microsoft.ServiceFabric.Services.Remoting.FabricTransport;
 using System.Runtime.InteropServices;
+using Microsoft.AspNetCore.Hosting;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
@@ -111,7 +112,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         #region StatelessService
 
-
+        public override void ConfigureBuilder(IWebHostBuilder builder)
+        {
+            base.ConfigureBuilder(builder);
+            builder.UseApplicationInsights(Environment.GetEnvironmentVariable("APPLICATION_INSIGHTS"));
+        }
         protected override void ConfigureServices(IServiceCollection services)
         {
             services.AddSingleton(this);

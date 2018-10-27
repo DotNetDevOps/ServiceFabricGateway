@@ -15,7 +15,7 @@
     <Parameter Name="APPLICATION_INSIGHTS" DefaultValue="" />
     <Parameter Name="GatewayService_Ports_Http" DefaultValue="8498" />
     <Parameter Name="GatewayService_Ports_Https" DefaultValue="8500" />
-    <Parameter Name="GatewayManagementService_PlacementConstraints" DefaultValue="((NodeTypeName==nt1vm) &amp;&amp; (NodeName==_nt1vm_0 ||  NodeName==_nt1vm_1 || NodeName==_nt1vm_2 || NodeName==_nt1vm_3 || NodeName==_nt1vm_4))" />
+    <Parameter Name="GatewayManagementService_PlacementConstraints" DefaultValue="" />
   </Parameters>
   <!-- Import the ServiceManifest from the ServicePackage. The ServiceManifestName and ServiceManifestVersion 
        should match the Name and Version attributes of the ServiceManifest element defined in the 
@@ -37,6 +37,9 @@
             <Parameter Name="ReverseProxyLocation" Value="[GatewayReverseProxyLocation]" />
             <Parameter Name="SslOptions" Value="[GatewaySslOptions]" />
             <Parameter Name="Properties" Value="[GatewayProperties]" />
+          </Section>
+          <Section Name="ApplicationInsights">
+            <Parameter Name="InstrumentationKey" Value="[APPLICATION_INSIGHTS]" />
           </Section>
         </Settings>
       </ConfigOverride>

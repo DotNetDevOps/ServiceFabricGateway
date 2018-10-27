@@ -23,6 +23,8 @@ using Unity.Injection;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using System.IO;
+using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Configuration;
 
 namespace SInnovations.ServiceFabric.GatewayService
 {
@@ -77,17 +79,23 @@ namespace SInnovations.ServiceFabric.GatewayService
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 
+          
+           
+
             try
             {
                 using (var container = new FabricContainer())
                 {
-                    container.AddOptions();
-                    container.ConfigureSerilogging(logConfiguration =>
+                    container.AddOptions()
+
+                        .ConfigureSerilogging(logConfiguration =>
                              logConfiguration.MinimumLevel.Debug()
                              .Enrich.FromLogContext()
-                             .WriteTo.File("trace.log",retainedFileCountLimit:5, fileSizeLimitBytes:1024*1024*10)
+                             .WriteTo.File("trace.log", retainedFileCountLimit: 5, fileSizeLimitBytes: 1024 * 1024 * 10)
                              .WriteTo.LiterateConsole(outputTemplate: "[{Timestamp:HH:mm:ss} {Level}] {SourceContext}{NewLine}{Message}{NewLine}{Exception}{NewLine}")
                              .WriteTo.ApplicationInsightsTraces(Environment.GetEnvironmentVariable("APPLICATION_INSIGHTS"), Serilog.Events.LogEventLevel.Information));
+                            // .ConfigureApplicationInsights(); 
+
 
 
 
@@ -97,10 +105,10 @@ namespace SInnovations.ServiceFabric.GatewayService
                     var keyvaultINfo = container.Resolve<KeyVaultSecretManager>();
 
                     container.UseConfiguration(new ConfigurationBuilder()
+                        .AddServiceFabricConfig("Config") // Add Service Fabric configuration settings.
                         .AddAzureKeyVault(keyvaultINfo.KeyVaultUrl, keyvaultINfo.Client, keyvaultINfo));
 
-
-
+               
                     container.Configure<KeyVaultOptions>("KeyVault");
 
                     container.WithLetsEncryptService(new LetsEncryptServiceOptions
