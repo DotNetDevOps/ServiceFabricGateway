@@ -35,12 +35,13 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Startup
                 {
                     if(context.Request.Headers.TryGetValue("X-ServiceFabric-Key", out StringValues serviceFabricKey))
                     {
-                        if (!serviceFabricKey.FirstOrDefault().Equals(this.serviceFabricKey))
-                        {
-                            logger.LogWarning("X-ServiceFabric-Key mismatch: {actual} {expected}", serviceFabricKey, this.serviceFabricKey);
-                            context.Response.StatusCode = StatusCodes.Status410Gone;
-                            return;
-                        }
+                        //TODO, Readd without version when version bumps
+                        //if (!serviceFabricKey.FirstOrDefault().Equals(this.serviceFabricKey))
+                        //{
+                        //    logger.LogWarning("X-ServiceFabric-Key mismatch: {actual} {expected}", serviceFabricKey, this.serviceFabricKey);
+                        //    context.Response.StatusCode = StatusCodes.Status410Gone;
+                        //    return;
+                        //}
                     }
 
                     var original = context.Request.PathBase;
