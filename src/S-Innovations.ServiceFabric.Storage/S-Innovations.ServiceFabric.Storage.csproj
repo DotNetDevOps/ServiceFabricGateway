@@ -14,7 +14,7 @@
     <PackageReference Include="IdentityModel" Version="3.10.1" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="2.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.AzureStorage" Version="2.1.1" />
-    <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="4.3.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="4.4.0" />
     <PackageReference Include="S-Innovations.ServiceFabric.Unity" Version="2.1.0-pre-2018100801" />
     <PackageReference Include="WindowsAzure.Storage" Version="9.3.2" />
   </ItemGroup>
