@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.HttpOverrides.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using System;
 using System.Linq;
+using System.Net;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Startup
 {
@@ -28,12 +30,12 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Startup
             {
                 builder.UseForwardedHeaders(new ForwardedHeadersOptions
                 {
-                    ForwardedHeaders = ForwardedHeaders.XForwardedHost | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor
+                    ForwardedHeaders = ForwardedHeaders.XForwardedHost | ForwardedHeaders.XForwardedProto
                 });
 
                 builder.Use(async (context, next) =>
                 {
-                    if(context.Request.Headers.TryGetValue("X-ServiceFabric-Key", out StringValues serviceFabricKey))
+                    if (context.Request.Headers.TryGetValue("X-ServiceFabric-Key", out StringValues serviceFabricKey))
                     {
                         //TODO, Readd without version when version bumps
                         //if (!serviceFabricKey.FirstOrDefault().Equals(this.serviceFabricKey))
@@ -42,6 +44,20 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Startup
                         //    context.Response.StatusCode = StatusCodes.Status410Gone;
                         //    return;
                         //}
+                    }
+
+                    if (context.Request.Headers.TryGetValue("X-Forwarded-For", out StringValues XForwardedFor))
+                    {
+                        var parsed = IPEndPointParser.TryParse(XForwardedFor.First(), out IPEndPoint remoteIP);
+                        logger.LogInformation("X-Forwarded-For = {XForwardedFor}, Parsed={parsed}, remoteIp={remoteIP}", string.Join(",", XForwardedFor), parsed, parsed ? remoteIP : null);
+                        if (parsed)
+                        {
+                            context.Connection.RemoteIpAddress = remoteIP.Address;
+                        }
+                    }
+                    else
+                    {
+                        logger.LogInformation("No X-Forwarded-For: {Request} {Path} {REmoteIpAddress} ", context.Request.Host, context.Request.Path, context.Connection.RemoteIpAddress);
                     }
 
                     var original = context.Request.PathBase;
@@ -55,13 +71,13 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Startup
 
                         await next();
 
-  
+
                     }
                     finally
                     {
                         context.Request.Path = context.Request.PathBase + context.Request.Path;
-                        context.Request.PathBase= original;
-                       
+                        context.Request.PathBase = original;
+
                     }
 
                 });
