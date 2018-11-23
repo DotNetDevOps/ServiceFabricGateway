@@ -28,7 +28,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Startup
             {
                 builder.UseForwardedHeaders(new ForwardedHeadersOptions
                 {
-                    ForwardedHeaders = ForwardedHeaders.XForwardedHost | ForwardedHeaders.XForwardedProto
+                    ForwardedHeaders = ForwardedHeaders.XForwardedHost | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor
                 });
 
                 builder.Use(async (context, next) =>

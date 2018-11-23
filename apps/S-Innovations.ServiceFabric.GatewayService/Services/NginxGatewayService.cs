@@ -439,6 +439,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                             sb.AppendLine();
                         }
 
+                        sb.AppendLine("\t\tlarge_client_header_buffers 4 16k;");
+
                         var test = new HashSet<string>();
 
                         foreach (var a in serverGroup.Value)

@@ -10,5 +10,7 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
     {
         public string InstrumentationKey { get; set; }
 
+        public string cookieDomain { get; set; }
+
     }
 }
