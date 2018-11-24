@@ -48,8 +48,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Startup
 
                     if (context.Request.Headers.TryGetValue("X-Forwarded-For", out StringValues XForwardedFor))
                     {
-                        var parsed = IPEndPointParser.TryParse(XForwardedFor.First(), out IPEndPoint remoteIP);
-                        logger.LogInformation("X-Forwarded-For = {XForwardedFor}, Parsed={parsed}, remoteIp={remoteIP}", string.Join(",", XForwardedFor), parsed, parsed ? remoteIP : null);
+                        var parsed = IPEndPointParser.TryParse(XForwardedFor.SelectMany(k=>k.Split(',')).First(), out IPEndPoint remoteIP);
+                        logger.LogInformation("X-Forwarded-For = {XForwardedFor} {Length}, Parsed={parsed}, remoteIp={oldRemoteIP}/{remoteIP}", string.Join(",", XForwardedFor), XForwardedFor.Count, parsed, context.Connection.RemoteIpAddress, parsed ? remoteIP : null);
                         if (parsed)
                         {
                             context.Connection.RemoteIpAddress = remoteIP.Address;
