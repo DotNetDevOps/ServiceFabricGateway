@@ -488,9 +488,9 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
             {
                 ExcludedTypes = "Event", // exclude custom events from being sampled
                 MaxTelemetryItemsPerSecond = 1, // default: 5 calls/sec
-                SamplingPercentageIncreaseTimeout = TimeSpan.FromSeconds(1), // default: 2 min
-                SamplingPercentageDecreaseTimeout = TimeSpan.FromSeconds(1), // default: 30 sec
-                EvaluationInterval = TimeSpan.FromSeconds(1), // default: 15 sec
+                SamplingPercentageIncreaseTimeout = TimeSpan.FromSeconds(30), // default: 2 min
+                SamplingPercentageDecreaseTimeout = TimeSpan.FromSeconds(10), // default: 30 sec
+                EvaluationInterval = TimeSpan.FromSeconds(10), // default: 15 sec
                 InitialSamplingPercentage = 25, // default: 100%
             };
         }
@@ -508,6 +508,11 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
             {
                 if (d.Context.GetInternalContext().SdkVersion.StartsWith("serviceremoting"))
                 {
+                    if(d.Duration < TimeSpan.FromMilliseconds(50))
+                    {
+                        return;
+                    } 
+
                     this.serviceRemotingProcessor.Process(item);
                     return;
                 }
