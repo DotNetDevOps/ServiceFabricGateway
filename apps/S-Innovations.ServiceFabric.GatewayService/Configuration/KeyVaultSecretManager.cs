@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureKeyVault;
 using Microsoft.Extensions.Logging;
 using SInnovations.ServiceFabric.Storage.Configuration;
+using SInnovations.Unity.AspNetCore;
 using System;
 using System.Collections.Generic;
 using System.Fabric;
@@ -13,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace SInnovations.ServiceFabric.GatewayService.Configuration
 {
-    public class KeyVaultSecretManager : IKeyVaultSecretManager
+    public class KeyVaultSecretManager : IKeyVaultSecretManager, IConfigurationBuilderExtension
     {
         private readonly ILogger Logger;
         private readonly AzureADConfiguration AzureAD;
@@ -52,5 +53,9 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
             return true;
         }
 
+        public IConfigurationBuilder Extend(IConfigurationBuilder cbuilder)
+        {
+           return cbuilder.AddAzureKeyVault(KeyVaultUrl, Client, this);
+        }
     }
 }

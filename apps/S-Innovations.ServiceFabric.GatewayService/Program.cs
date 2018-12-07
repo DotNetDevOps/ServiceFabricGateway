@@ -25,6 +25,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using System.IO;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Configuration;
+using Unity.Lifetime;
 
 namespace SInnovations.ServiceFabric.GatewayService
 {
@@ -100,13 +101,11 @@ namespace SInnovations.ServiceFabric.GatewayService
 
 
                     container.ConfigureApplicationStorage();
-
-
-                    var keyvaultINfo = container.Resolve<KeyVaultSecretManager>();
+                    container.RegisterType<KeyVaultSecretManager>(new ContainerControlledLifetimeManager());
+                    container.RegisterType<IConfigurationBuilderExtension, KeyVaultSecretManager>();
 
                     container.UseConfiguration(new ConfigurationBuilder()
-                        .AddServiceFabricConfig("Config") // Add Service Fabric configuration settings.
-                        .AddAzureKeyVault(keyvaultINfo.KeyVaultUrl, keyvaultINfo.Client, keyvaultINfo));
+                        .AddServiceFabricConfig("Config"));
 
                
                     container.Configure<KeyVaultOptions>("KeyVault");
