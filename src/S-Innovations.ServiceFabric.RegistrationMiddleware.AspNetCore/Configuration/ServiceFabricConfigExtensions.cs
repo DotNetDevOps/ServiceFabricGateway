@@ -14,7 +14,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Configura
     {
         public static IConfigurationBuilder AddServiceFabricConfig(this IConfigurationBuilder builder, string packageName)
         {
-            return builder.Add(new ServiceFabricConfigSource(packageName));
+            return builder.Add(new ServiceFabricConfigSource(packageName)); 
         }
     }
 }

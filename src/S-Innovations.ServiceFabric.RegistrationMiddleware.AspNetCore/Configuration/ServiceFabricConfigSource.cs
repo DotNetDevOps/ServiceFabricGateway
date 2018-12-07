@@ -13,6 +13,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Configura
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
+           
             return new ServiceFabricConfigurationProvider(PackageName);
         }
     }

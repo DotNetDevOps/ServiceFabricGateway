@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Fabric;
 
@@ -8,6 +9,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Configura
     {
         private readonly string _packageName;
         private readonly CodePackageActivationContext _context;
+        
 
         public ServiceFabricConfigurationProvider(string packageName)
         {
@@ -25,6 +27,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Configura
             {
 
             }
+
+            
         }
 
         public override void Load()
@@ -43,7 +47,15 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Configura
             {
                 foreach (var param in section.Parameters)
                 {
-                    Data[$"{section.Name}:{param.Name}"] = param.IsEncrypted ? param.DecryptValue().ToUnsecureString() : param.Value;
+                    
+                    try
+                    {
+                        Data[$"{section.Name}:{param.Name}"] = param.IsEncrypted && !string.IsNullOrEmpty(param.Value) ? param.DecryptValue().ToUnsecureString() : param.Value;
+                    }catch(Exception ex)
+                    {
+                        Console.WriteLine($"Failed to add \"{section.Name}:{param.Name}\" from {param.Value} encryption={param.IsEncrypted}");
+                        //logger.LogWarning("Failed to add {key} from {value} encryption={encryption}", $"{section.Name}:{param.Name}",param.Value, param.IsEncrypted);
+                    }
                 }
             }
         }
