@@ -1,31 +1,20 @@
-﻿using System;
-using System.Threading;
-using Microsoft.Extensions.Configuration;
+﻿using DotNetDevOps.ServiceFabric.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Unity;
+using Microsoft.Extensions.Hosting;
 using Serilog;
 using SInnovations.LetsEncrypt;
-using SInnovations.ServiceFabric.GatewayService.Actors;
 using SInnovations.ServiceFabric.GatewayService.Configuration;
 using SInnovations.ServiceFabric.GatewayService.Services;
+using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore;
+using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Configuration;
+using SInnovations.ServiceFabric.ResourceProvider;
 using SInnovations.ServiceFabric.Storage.Configuration;
 using SInnovations.ServiceFabric.Storage.Extensions;
 using SInnovations.ServiceFabric.Storage.Services;
-using SInnovations.ServiceFabric.Unity;
-using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services;
-using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions;
-using SInnovations.Unity.AspNetCore;
-using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore;
-//using ACMESharp.PKI;
-using SInnovations.ServiceFabric.ResourceProvider;
-using Unity.Injection;
-using Microsoft.ServiceFabric.Services.Remoting.Client;
+using System;
+using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using System.IO;
-using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Configuration;
-using Unity.Lifetime;
+using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions;
 
 namespace SInnovations.ServiceFabric.GatewayService
 {
@@ -69,7 +58,7 @@ namespace SInnovations.ServiceFabric.GatewayService
             // Marking as observed to prevent process exit.
            // e.SetObserved();
         }
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
 
            
@@ -80,61 +69,77 @@ namespace SInnovations.ServiceFabric.GatewayService
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 
-          
-           
+            using (var host = new FabricHostBuilder()
 
-            try
-            {
-                using (var container = new FabricContainer())
+                //Add fabric configuration provider
+                .ConfigureAppConfiguration((context, configurationBuilder) =>
                 {
-                    container.AddOptions()
 
-                        .ConfigureSerilogging(logConfiguration =>
+                    configurationBuilder.AddServiceFabricConfig("Config");
+
+                })
+               //Setup services that exists on root, shared in all services
+               .ConfigureServices((context, services) =>
+               {
+                   services.AddOptions();
+
+                   services.AddServiceFabricApplicationStorage(true);
+
+                   services.AddSingleton<AzureADConfiguration>();
+                   services.AddSingleton<KeyVaultSecretManager>();
+                   services.AddSingleton<IConfigurationBuilderExtension, KeyVaultSecretManager>();
+
+                   services.WithLetsEncryptService(new LetsEncryptServiceOptions
+                   {
+                       BaseUri = Certes.Acme.WellKnownServers.LetsEncryptV2.AbsoluteUri// "https://acme-v01.api.letsencrypt.org"
+                   });
+
+                  
+
+               })
+                //Configure Fabric Services
+                .WithStatelessService<NginxGatewayService>("GatewayServiceType")
+                .WithStatelessService<ApplicationStorageService>("ApplicationStorageServiceType")
+                .WithStatelessService<KeyVaultService>("KeyVaultServiceType")
+                .WithStatelessService<ResourceProviderService>("ResourceProviderServiceType")
+                .WithStatefullService<GatewayManagementService>("GatewayManagementServiceType")
+                //Configure IOptions
+                .Configure<KeyVaultOptions>("KeyVault")
+                //Configure Logging
+                .ConfigureSerilogging(
+                    (context, logConfiguration) =>
                              logConfiguration.MinimumLevel.Debug()
                              .Enrich.FromLogContext()
                              .WriteTo.File("trace.log", retainedFileCountLimit: 5, fileSizeLimitBytes: 1024 * 1024 * 10)
                              .WriteTo.LiterateConsole(outputTemplate: "[{Timestamp:HH:mm:ss} {Level}] {SourceContext}{NewLine}{Message}{NewLine}{Exception}{NewLine}")
-                             .WriteTo.ApplicationInsightsTraces(Environment.GetEnvironmentVariable("APPLICATION_INSIGHTS"), Serilog.Events.LogEventLevel.Information));
-                            // .ConfigureApplicationInsights(); 
+                          //   .WriteTo.ApplicationInsightsTraces(Environment.GetEnvironmentVariable("APPLICATION_INSIGHTS"), Serilog.Events.LogEventLevel.Information)
+                )
+                .ConfigureApplicationInsights()
+                //BuildApplication
+                .Build()
+                )
+            {
 
+                try
+                {
+                  
+                    await host.RunAsync();
+                }
+                catch (Exception ex)
+                {
 
+                    //  System.IO.File.WriteAllText("env.log", JsonConvert.SerializeObject( Environment.GetEnvironmentVariables()));
+                    System.IO.File.WriteAllText("err.log", ex.ToString());
+                    throw;
 
-
-                    container.ConfigureApplicationStorage();
-                    container.RegisterType<KeyVaultSecretManager>(new ContainerControlledLifetimeManager());
-                    container.RegisterType<IConfigurationBuilderExtension, KeyVaultSecretManager>();
-
-                    container.UseConfiguration(new ConfigurationBuilder()
-                        .AddServiceFabricConfig("Config"));
-
-               
-                    container.Configure<KeyVaultOptions>("KeyVault");
-
-                    container.WithLetsEncryptService(new LetsEncryptServiceOptions
-                    {
-                        BaseUri = Certes.Acme.WellKnownServers.LetsEncryptV2.AbsoluteUri// "https://acme-v01.api.letsencrypt.org"
-                    });
-
-                    container.WithStatelessService<NginxGatewayService>("GatewayServiceType");
-                    container.WithStatelessService<ApplicationStorageService>("ApplicationStorageServiceType");
-                    container.WithStatelessService<KeyVaultService>("KeyVaultServiceType");
-                    container.WithStatelessService<ResourceProviderService>("ResourceProviderServiceType");
-
-
-                    container.WithStatefullService<GatewayManagementService>("GatewayManagementServiceType");
-
-
-                    Thread.Sleep(Timeout.Infinite);
                 }
 
-            }catch(Exception ex)
-            {
-              
-              //  System.IO.File.WriteAllText("env.log", JsonConvert.SerializeObject( Environment.GetEnvironmentVariables()));
-                System.IO.File.WriteAllText("err.log", ex.ToString());
-                throw;
-             
+
             }
+           
+
+
+
 
         }
 

@@ -1,19 +1,18 @@
-﻿using Microsoft.ApplicationInsights.Extensibility;
+﻿using Autofac;
+using DotNetDevOps.ServiceFabric.Hosting;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Unity;
+using Microsoft.Extensions.Options;
 using Microsoft.ServiceFabric.Services.Remoting;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Serilog;
 using SInnovations.ServiceFabric.Gateway.Common.Model;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services;
-using SInnovations.ServiceFabric.Unity;
-using SInnovations.Unity.AspNetCore;
 using System;
-using Unity.Injection;
-using Unity.Lifetime;
-using Microsoft.Extensions.Options;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -22,43 +21,42 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
 
     public static class KestrelHostingExtensions
     {
-        private static List<Action<LoggerConfiguration>> _configurations = new List<Action<LoggerConfiguration>>();
-        public static IUnityContainer ConfigureSerilogging(this IUnityContainer container, Action<LoggerConfiguration> configure)
+        private static List<Action<IComponentContext,LoggerConfiguration>> _configurations = new List<Action<IComponentContext,LoggerConfiguration>>();
+        public static IHostBuilder ConfigureSerilogging(this IHostBuilder container, Action<IComponentContext,LoggerConfiguration> configure)
         {
-            if (!container.IsRegistered<LoggerConfiguration>())
+            container.ConfigureContainer< ContainerBuilder>((context, builder) =>
             {
-                container.RegisterType<Serilog.Core.Logger>(new ContainerControlledLifetimeManager(),
-                    new InjectionFactory(c => {
-                        var configuration = c.Resolve<LoggerConfiguration>();
 
-                        foreach (var modify in _configurations)
-                        {
-                            modify(configuration);
-                        }
+                builder.RegisterType<LoggerConfiguration>().AsSelf().SingleInstance().IfNotRegistered(typeof(LoggerConfiguration));
 
-                        return configuration.CreateLogger();
+                builder.Register(c=>
+                {
+                    var configuration = c.Resolve<LoggerConfiguration>();
+
+                    foreach (var modify in _configurations)
+                    {
+                        modify(c,configuration);
+                    }
+
+                    return configuration.CreateLogger();
+                }).AsSelf().SingleInstance().IfNotRegistered(typeof(Serilog.Core.Logger));
+
+                builder.Register(c =>
+                       {
+                           var filters = new LoggerFilterOptions()
+                               .AddFilter("System", LogLevel.Warning)
+                               .AddFilter("Microsoft", LogLevel.Warning)
+                               .AddFilter("Microsoft.AspNetCore.Authentication", LogLevel.Information);
+
+                           var factory = new LoggerFactory(Enumerable.Empty<ILoggerProvider>(), filters);
 
 
-                        }));
 
-                container.RegisterInstance(new LoggerConfiguration());
-                container.RegisterType<LoggerFactory>(new ContainerControlledLifetimeManager(),
-                     new InjectionFactory((c) =>
-                     {
-                         var filters = new LoggerFilterOptions()
-                             .AddFilter("System", LogLevel.Warning)
-                             .AddFilter("Microsoft", LogLevel.Warning)
-                             .AddFilter("Microsoft.AspNetCore.Authentication", LogLevel.Information);
+                           factory.AddSerilog(c.Resolve<Serilog.Core.Logger>());
+                           return factory;
 
-                         var factory = new LoggerFactory(Enumerable.Empty<ILoggerProvider>(),filters);
-
-                       
-
-                         return factory.AddSerilog(c.Resolve<Serilog.Core.Logger>());
-
-                     }));
-                container.RegisterType<ILoggerFactory, LoggerFactory>();
-            }
+                       }).AsSelf().As<ILoggerFactory>().SingleInstance().IfNotRegistered(typeof(LoggerConfiguration));
+            });
 
             _configurations.Add(configure);
 
@@ -66,16 +64,18 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
 
             return container;
         }
-        public static IUnityContainer ConfigureApplicationInsights(this IUnityContainer container)
+
+        
+        public static IHostBuilder ConfigureApplicationInsights(this IHostBuilder container)
         {
 
 
             container.Configure<ApplicationInsights>("ApplicationInsights");
 
-            container.ConfigureSerilogging((logConfiguration) =>
+            container.ConfigureSerilogging((context,logConfiguration) =>
             {
 
-                logConfiguration.WriteTo.ApplicationInsightsTraces(container.Resolve<IOptions<ApplicationInsights>>().Value.InstrumentationKey, Serilog.Events.LogEventLevel.Information);
+                logConfiguration.WriteTo.ApplicationInsightsTraces(context.Resolve<IOptions<ApplicationInsights>>().Value.InstrumentationKey, Serilog.Events.LogEventLevel.Information);
 
                
             });
@@ -84,26 +84,33 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
             return container;
         }
 
-        public static IUnityContainer WithServiceProxy<TServiceInterface>(this IUnityContainer container, string serviceName, string listenerName = null)
-            where TServiceInterface : IService
+        public static IHostBuilder WithServiceProxy<TServiceInterface>(this IHostBuilder container, string serviceName, string listenerName = null)
+            where TServiceInterface : class,IService
         {
-            return container.RegisterType<TServiceInterface>(new HierarchicalLifetimeManager(),
-                      new InjectionFactory(c => ServiceProxy.Create<TServiceInterface>(
-                          new Uri(serviceName), listenerName: listenerName)));
+            container.ConfigureServices(services =>
+            {
+                services.AddScoped(c=> ServiceProxy.Create<TServiceInterface>(
+                          new Uri(serviceName), listenerName: listenerName));
+            });
+            //return container.RegisterType<TServiceInterface>(new HierarchicalLifetimeManager(),
+            //          new InjectionFactory(c => ServiceProxy.Create<TServiceInterface>(
+            //              new Uri(serviceName), listenerName: listenerName)));
+
+            return container;
 
         }
-        public static IUnityContainer WithKestrelHosting<TStartup>(this IUnityContainer container, string serviceType, KestrelHostingServiceOptions options)
+        public static IHostBuilder WithKestrelHosting<TStartup>(this IHostBuilder container, string serviceType, KestrelHostingServiceOptions options)
             where TStartup : class
         {
             return container.WithKestrelHosting<KestrelHostingService<TStartup>, TStartup>(serviceType, options);
         }
-        public static IUnityContainer WithKestrelHosting<TStartup>(this IUnityContainer container, string serviceType, Func<IUnityContainer,KestrelHostingServiceOptions> options)
+        public static IHostBuilder WithKestrelHosting<TStartup>(this IHostBuilder container, string serviceType, Func<IComponentContext, KestrelHostingServiceOptions> options)
          where TStartup : class
         {
             return container.WithKestrelHosting<KestrelHostingService<TStartup>, TStartup>(serviceType, options);
         }
 
-        public static IUnityContainer WithKestrelHosting<THostingService, TStartup>(this IUnityContainer container, string serviceType, KestrelHostingServiceOptions options)
+        public static IHostBuilder WithKestrelHosting<THostingService, TStartup>(this IHostBuilder container, string serviceType, KestrelHostingServiceOptions options)
           where THostingService : KestrelHostingService<TStartup>
           where TStartup : class
         {
@@ -111,22 +118,23 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
             container.WithStatelessService<THostingService>(serviceType, child => { child.RegisterInstance(options); });
             return container;
         }
-        public static IUnityContainer WithKestrelHosting<THostingService, TStartup>(this IUnityContainer container, string serviceType, Func<IUnityContainer, KestrelHostingServiceOptions> options)
+        public static IHostBuilder WithKestrelHosting<THostingService, TStartup>(this IHostBuilder container, string serviceType, Func<IComponentContext, KestrelHostingServiceOptions> options)
           where THostingService : KestrelHostingService<TStartup>
           where TStartup : class
         {
 
-            container.WithStatelessService<THostingService>(serviceType, child => { child.RegisterType<KestrelHostingServiceOptions>(new ContainerControlledLifetimeManager(),new InjectionFactory(options)); });
+            container.WithStatelessService<THostingService>(serviceType, child => { child.Register(options).AsSelf().SingleInstance(); });
             return container;
         }
 
 
-        public static IUnityContainer WithKestrelHosting(this IUnityContainer container, string serviceType, KestrelHostingServiceOptions options, Action<IWebHostBuilder> builder)
+        public static IHostBuilder WithKestrelHosting(this IHostBuilder container, string serviceType, KestrelHostingServiceOptions options, Action<IWebHostBuilder> builder)
         {
             container.WithStatelessService<KestrelHostingService>(serviceType, child =>
             {
                 child.RegisterInstance(options);
-                child.RegisterType<KestrelHostingService>(new InjectionProperty("WebBuilderConfiguration", builder));
+                child.RegisterType<KestrelHostingService>().WithProperty("WebBuilderConfiguration", builder);
+             //   child.RegisterType<KestrelHostingService>(new InjectionProperty("WebBuilderConfiguration", builder));
             });
 
             return container;

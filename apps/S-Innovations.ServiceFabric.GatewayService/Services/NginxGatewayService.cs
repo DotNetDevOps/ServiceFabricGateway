@@ -1,13 +1,17 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Autofac;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.ServiceFabric.Services.Client;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
+using Microsoft.ServiceFabric.Services.Remoting.FabricTransport;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Client;
 using Microsoft.WindowsAzure.Storage;
 using Newtonsoft.Json;
 using Polly;
 using Polly.Retry;
 using SInnovations.ServiceFabric.Gateway.Actors;
+using SInnovations.ServiceFabric.Gateway.Common.Extensions;
 using SInnovations.ServiceFabric.Gateway.Common.Model;
 using SInnovations.ServiceFabric.Gateway.Model;
 using SInnovations.ServiceFabric.GatewayService.Configuration;
@@ -22,15 +26,11 @@ using System.Fabric.Description;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Unity;
-using SInnovations.ServiceFabric.Gateway.Common.Extensions;
-using Microsoft.ServiceFabric.Services.Remoting.FabricTransport;
-using System.Runtime.InteropServices;
-using Microsoft.AspNetCore.Hosting;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
@@ -73,7 +73,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
         private readonly FabricClient _fabricClient = new FabricClient();
 
         public NginxGatewayService(StatelessServiceContext serviceContext,
-            IUnityContainer container, ILoggerFactory factory,
+            ILifetimeScope container, ILoggerFactory factory,
             StorageConfiguration storage,
             ConfigurationPackage configurationPackage)
             : base(new KestrelHostingServiceOptions

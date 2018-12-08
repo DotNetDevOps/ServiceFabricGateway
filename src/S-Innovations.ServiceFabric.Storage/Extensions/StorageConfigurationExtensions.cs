@@ -1,6 +1,5 @@
 ﻿using IdentityModel;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
@@ -8,35 +7,32 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 using SInnovations.ServiceFabric.Storage.Configuration;
 using SInnovations.ServiceFabric.Storage.Services;
-using SInnovations.ServiceFabric.Unity;
 using System;
 using System.Diagnostics;
 using System.Fabric;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
-using Unity;
-using Unity.Injection;
-using Unity.Lifetime;
 
 namespace SInnovations.ServiceFabric.Storage.Extensions
 {
     public static class StorageConfigurationExtensions
     {
 
-        public static IUnityContainer ConfigureApplicationStorage(this IUnityContainer container, bool useFileCache = true)
+        public static IServiceCollection AddServiceFabricApplicationStorage(this IServiceCollection container, bool useFileCache = true)
         {
-            container.RegisterType<IKeyManager, XmlKeyManager>();
+            
+           // container.RegisterType<IKeyManager, XmlKeyManager>();
           
             if(useFileCache)
             {
                 container
-                  .RegisterType<TokenCache, FileCache>(new ContainerControlledLifetimeManager(), new InjectionConstructor(typeof(ILoggerFactory), typeof(IDataProtectionProvider)))
-                  .RegisterType<IDataProtectionProvider>(new ContainerControlledLifetimeManager(), new InjectionFactory(c => DataProtectionProvider.Create(c.Resolve<ICodePackageActivationContext>().ApplicationName)));
+                  .AddSingleton<TokenCache>(sp => new FileCache(sp.GetService<ILoggerFactory>(), sp.GetService<IDataProtectionProvider>()))
+                  .AddSingleton(sp => DataProtectionProvider.Create(sp.GetService<ICodePackageActivationContext>().ApplicationName));
 
             }
             else
             {
-                container.RegisterInstance(new TokenCache());
+                container.AddSingleton(new TokenCache());
             }
 
 
@@ -47,7 +43,7 @@ namespace SInnovations.ServiceFabric.Storage.Extensions
             
         }
 
-        public static IServiceCollection AddApplicationStorageDataProtection(this IServiceCollection services, IUnityContainer container, X509Certificate2 cert =null, string applicationName =null, params X509Certificate2[] unprotects )
+        public static IServiceCollection AddApplicationStorageDataProtection(this IServiceCollection services, IServiceProvider container, X509Certificate2 cert =null, string applicationName =null, params X509Certificate2[] unprotects )
         {
             if (container != null)
             {
@@ -63,7 +59,7 @@ namespace SInnovations.ServiceFabric.Storage.Extensions
                     }
 
 
-                    var storage = container.Resolve<IApplicationStorageService>();
+                    var storage = container.GetService<IApplicationStorageService>();
 
                     if (cert == null)
                     {

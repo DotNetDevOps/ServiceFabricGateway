@@ -1,20 +1,15 @@
-﻿using Microsoft.Azure.KeyVault;
+﻿using DotNetDevOps.ServiceFabric.Hosting;
+using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.KeyVault.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureKeyVault;
 using Microsoft.Extensions.Logging;
 using SInnovations.ServiceFabric.Storage.Configuration;
-using SInnovations.Unity.AspNetCore;
-using System;
-using System.Collections.Generic;
 using System.Fabric;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SInnovations.ServiceFabric.GatewayService.Configuration
 {
-    public class KeyVaultSecretManager : IKeyVaultSecretManager, IConfigurationBuilderExtension
+    public class KeyVaultSecretManager : IKeyVaultSecretManager , IConfigurationBuilderExtension
     {
         private readonly ILogger Logger;
         private readonly AzureADConfiguration AzureAD;

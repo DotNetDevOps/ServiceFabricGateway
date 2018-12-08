@@ -1,41 +1,39 @@
-﻿using Microsoft.ApplicationInsights.Extensibility;
+﻿using Autofac;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.ApplicationInsights.ServiceFabric;
+using Microsoft.ApplicationInsights.ServiceFabric.Module;
+using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Unity;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
+using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Runtime;
 using Serilog;
 using Serilog.Extensions.Logging;
 using SInnovations.ServiceFabric.Gateway.Actors;
+using SInnovations.ServiceFabric.Gateway.Common.Extensions;
 using SInnovations.ServiceFabric.Gateway.Common.Model;
 using SInnovations.ServiceFabric.Gateway.Model;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Communication;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Startup;
-using SInnovations.ServiceFabric.Unity;
-using SInnovations.Unity.AspNetCore;
 using System;
 using System.Collections.Generic;
 using System.Fabric;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Unity.Lifetime;
-using Unity.Injection;
-using Microsoft.ApplicationInsights.ServiceFabric.Module;
-using Microsoft.ServiceFabric.Services.Remoting.Client;
-using SInnovations.ServiceFabric.Gateway.Common.Extensions;
-using System.Linq;
-using Unity.Microsoft.DependencyInjection;
-using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
-using Microsoft.ApplicationInsights.Channel;
-using Microsoft.ApplicationInsights.DataContracts;
-using Microsoft.ApplicationInsights.AspNetCore.TelemetryInitializers;
-using Microsoft.ApplicationInsights.Extensibility.Implementation;
+using Autofac.Extensions.DependencyInjection;
+using Autofac.Core;
+using Autofac.Core.Lifetime;
+using Microsoft.AspNetCore.Builder;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 {
@@ -142,27 +140,109 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
             }
         }
     }
-
-
-    public interface IApplicationManager
+    public class ContainerBuilderWrap
     {
-        Task RestartRequestAsync(CancellationToken cancellationToken);
+        public ILifetimeScope Parent { get; internal set; }
+        public IServiceCollection Services { get; internal set; }
+    }
+    public class Test : IServiceProviderFactory<ContainerBuilder>
+    {
+        private readonly ILifetimeScope container;
+
+        public Test(ILifetimeScope parent)
+        {
+            this.container = parent ?? throw new ArgumentNullException(nameof(parent));
+        }
+
+        //public ContainerBuilderWrap CreateBuilder(IServiceCollection services)
+        //{
+        //    return new ContainerBuilderWrap
+        //    {
+        //        Parent = parent,
+        //        Services = services,
+        //    };
+
+
+
+          
+        //}
+        public ContainerBuilder CreateBuilder(IServiceCollection services)
+        {
+            var builder = new ContainerBuilder();
+
+
+
+            //var components = container.ComponentRegistry.Registrations
+            //        .Where(cr => cr.Activator.LimitType != typeof(LifetimeScope));
+                    
+            //      //  .Where(cr => cr.Activator.LimitType != typeof(MyType));
+            //foreach (var c in components)
+            //{
+            //    builder.RegisterComponent(c);
+            //}
+
+            //foreach (var source in container.ComponentRegistry.Sources)
+            //{
+            //    builder.RegisterSource(source);
+            //}
+
+            builder.Populate(services);
+
+            //   _configurationAction(builder);
+
+            return builder;
+        }
+        public IServiceProvider CreateServiceProvider(ContainerBuilder containerBuilder)
+        {
+            if (containerBuilder == null) throw new ArgumentNullException(nameof(containerBuilder));
+
+            var container = containerBuilder.Build();
+
+            return new AutofacServiceProvider(container);
+        }
+        //public IServiceProvider CreateServiceProvider(ContainerBuilderWrap containerBuilder)
+        //{
+        //    var scope = containerBuilder.Parent.BeginLifetimeScope(containerBuilder.Parent.Tag + $"[{new Random().Next(100)}]", builder =>
+        //    {
+        //        builder.Populate(containerBuilder.Services);
+        //      // builder.()
+        //       // builder.
+        //    });
+         
+        //    var serviceProvider = new AutofacServiceProvider(scope);
+        //    return serviceProvider;
+        //}
+    }
+    internal class ApplicationInsightsStartupFilter1 : IStartupFilter
+    {
+        /// <inheritdoc/>
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next)
+        {
+            return app =>
+            {
+                // Attemping to resolve TelemetryConfiguration triggers configuration of the same
+                // via <see cref="TelemetryConfigurationOptionsSetup"/> class which triggers
+                // initialization of TelemetryModules and construction of TelemetryProcessor pipeline.
+                var tc = app.ApplicationServices.GetService<IOptions<TelemetryConfiguration>>();
+                //var applicationInsightsDebugLogger = app.ApplicationServices.GetService<ApplicationInsightsDebugLogger>();
+                next(app);
+            };
+        }
     }
 
-    
     public class KestrelHostingService : StatelessService, IApplicationManager
     {
         public Action<IWebHostBuilder> WebBuilderConfiguration { get; set; }
 
         protected KestrelHostingServiceOptions Options { get; set; }
-        protected IUnityContainer Container { get; set; }
+        protected ILifetimeScope Container { get; set; }
 
         private readonly Microsoft.Extensions.Logging.ILogger _logger;
         public KestrelHostingService(
             KestrelHostingServiceOptions options,
             StatelessServiceContext serviceContext,
             ILoggerFactory factory,
-            IUnityContainer container)
+            ILifetimeScope container)
             : base(serviceContext)
         {
             Options = options;
@@ -188,7 +268,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 #endif
             services.AddSingleton<IStartupFilter>(new UseForwardedHeadersStartupFilter(
                 $"{this.Context.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{Context.CodePackageActivationContext.CodePackageVersion}", _logger));
-
+            services.AddSingleton<IStartupFilter>(new ApplicationInsightsStartupFilter1());
         }
 
 
@@ -225,6 +305,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                             if (!string.IsNullOrEmpty(appInsightKey))
                             {
                                  builder.UseApplicationInsights(appInsightKey);
+
                                 
                             }
 
@@ -232,9 +313,10 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
                             builder.ConfigureServices((services) =>
                             {
+                               // services
                                 services.AddSingleton(listener);
                                 services.AddSingleton((sp)=> new KestrelHostingAddresss{Url = this.GetAddresses()["kestrel"]  });
-
+                             //   services.AddTransient<TelemetryConfiguration>(sp=>sp.GetRequiredService<IOptions<TelemetryConfiguration>>().Value);
                                 services
                                     .AddSingleton<ITelemetryInitializer>((serviceProvider) => FabricTelemetryInitializerExtension.CreateFabricTelemetryInitializer(serviceContext))
                                     .AddSingleton<ITelemetryModule>(new MyServiceRemotingDependencyTrackingTelemetryModule())
@@ -287,12 +369,12 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
                             if (Container.IsRegistered<LoggerConfiguration>())
                             {
-                                Container.RegisterType<SerilogLoggerProvider>(new ContainerControlledLifetimeManager(), new InjectionFactory((c) =>
-                                {
-                                     var seriologger =new SerilogLoggerProvider(c.Resolve<Serilog.Core.Logger>(),false);
-                                    return seriologger;
+                                //Container.RegisterType<SerilogLoggerProvider>(new ContainerControlledLifetimeManager(), new InjectionFactory((c) =>
+                                //{
+                                //     var seriologger =new SerilogLoggerProvider(c.Resolve<Serilog.Core.Logger>(),false);
+                                //    return seriologger;
 
-                                }));
+                                //}));
                             
                                
                                 builder.ConfigureLogging((hostingContext, logging) =>
@@ -324,8 +406,17 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 
         public virtual void ConfigureBuilder(IWebHostBuilder builder)
         {
+            //services.AddSingleton<IServiceProviderFactory<ContainerBuilder>>(new AutofacServiceProviderFactory(configurationAction));
 
-            builder.UseUnityServiceProvider(Container);
+            //  builder.UseUnityServiceProvider(Container);
+            builder.ConfigureServices((context,services)=> {
+
+                //  services.AddAutofac();
+                //  services.AddSingleton<IHostingEnvironment>(context.HostingEnvironment);
+                //  services.AddSingleton(sp=>Container.Resolve<ILoggerFactory>())
+                // services.AddSingleton(Container.Resolve< IServiceProviderFactory<ContainerBuilder>>());
+                services.AddSingleton<IServiceProviderFactory<ContainerBuilder>>(new Test(Container));
+            });
 
             WebBuilderConfiguration?.Invoke(builder);
         }
@@ -550,7 +641,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
             KestrelHostingServiceOptions options,
             StatelessServiceContext serviceContext,
             ILoggerFactory factory,
-            IUnityContainer container)
+            ILifetimeScope container)
             : base(options, serviceContext, factory, container)
         {
 

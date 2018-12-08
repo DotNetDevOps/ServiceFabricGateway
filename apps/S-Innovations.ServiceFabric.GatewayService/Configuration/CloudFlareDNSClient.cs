@@ -9,6 +9,7 @@ using SInnovations.LetsEncrypt.Clients;
 
 namespace SInnovations.ServiceFabric.GatewayService.Configuration
 {
+
     public class CloudFlareDNSClient : IDnsClient
     {
 

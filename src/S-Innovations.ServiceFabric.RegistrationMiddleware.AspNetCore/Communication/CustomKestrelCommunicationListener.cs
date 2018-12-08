@@ -159,36 +159,41 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Communica
             return retry.ExecuteAsync(async () =>
             {
 
- 
-                await this.webHost.StartAsync();
- 
-
-                var url = this.webHost.ServerFeatures.Get<IServerAddressesFeature>().Addresses
-                        .Select(a => a.Replace("://+", "://" + this.serviceContext.NodeContext.IPAddressOrFQDN)).FirstOrDefault();
-
-                if (url == null)
+                try
                 {
-                    throw new InvalidOperationException("no url");
-                }
+                    await this.webHost.StartAsync();
 
-                var publishAddress = this.serviceContext.PublishAddress;
 
-                if (url.Contains("://+:"))
+                    var url = this.webHost.ServerFeatures.Get<IServerAddressesFeature>().Addresses
+                            .Select(a => a.Replace("://+", "://" + this.serviceContext.NodeContext.IPAddressOrFQDN)).FirstOrDefault();
+
+                    if (url == null)
+                    {
+                        throw new InvalidOperationException("no url");
+                    }
+
+                    var publishAddress = this.serviceContext.PublishAddress;
+
+                    if (url.Contains("://+:"))
+                    {
+                        url = url.Replace("://+:", $"://{publishAddress}:");
+                    }
+                    else if (url.Contains("://[::]:"))
+                    {
+                        url = url.Replace("://[::]:", $"://{publishAddress}:");
+                    }
+
+                    // When returning url to naming service, add UrlSuffix to it.
+                    // This UrlSuffix will be used by middleware to:
+                    //    - drop calls not intended for the service and return 410.
+                    //    - modify Path and PathBase in Microsoft.AspNetCore.Http.HttpRequest to be sent correctly to the service code.
+                    url = url.TrimEnd(new[] { '/' }) + this.UrlSuffix;
+
+                    return url;
+                }catch(Exception ex)
                 {
-                    url = url.Replace("://+:", $"://{publishAddress}:");
+                    throw;
                 }
-                else if (url.Contains("://[::]:"))
-                {
-                    url = url.Replace("://[::]:", $"://{publishAddress}:");
-                }
-
-                // When returning url to naming service, add UrlSuffix to it.
-                // This UrlSuffix will be used by middleware to:
-                //    - drop calls not intended for the service and return 410.
-                //    - modify Path and PathBase in Microsoft.AspNetCore.Http.HttpRequest to be sent correctly to the service code.
-                url = url.TrimEnd(new[] { '/' }) + this.UrlSuffix;
-
-                return url;
             });
         }
 
