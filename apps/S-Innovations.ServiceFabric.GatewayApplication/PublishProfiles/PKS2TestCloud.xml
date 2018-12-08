@@ -22,4 +22,5 @@
   -->
   <ClusterConnectionParameters ConnectionEndpoint="sf-gateway-pks2.westeurope.cloudapp.azure.com:19000" X509Credential="true" ServerCertThumbprint="9BC9F2700F3AB3EAD3F55329C8F6124C248C9413" FindType="FindByThumbprint" FindValue="9BC9F2700F3AB3EAD3F55329C8F6124C248C9413" StoreLocation="CurrentUser" StoreName="My" />
   <ApplicationParameterFile Path="..\ApplicationParameters\Pks2TestCloud.xml" />
+  <CopyPackageParameters CompressPackage="true" CopyPackageTimeoutSec="1800"/>
 </PublishProfile>
