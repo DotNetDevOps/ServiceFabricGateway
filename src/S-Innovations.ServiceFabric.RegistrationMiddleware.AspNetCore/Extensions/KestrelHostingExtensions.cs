@@ -122,7 +122,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
           where THostingService : KestrelHostingService<TStartup>
           where TStartup : class
         {
-
+            
             container.WithStatelessService<THostingService>(serviceType, child => { child.Register(options).AsSelf().SingleInstance(); });
             return container;
         }

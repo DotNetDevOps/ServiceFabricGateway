@@ -43,9 +43,9 @@ namespace SInnovations.ServiceFabric.Storage.Extensions
             
         }
 
-        public static IServiceCollection AddApplicationStorageDataProtection(this IServiceCollection services, IServiceProvider container, X509Certificate2 cert =null, string applicationName =null, params X509Certificate2[] unprotects )
+        public static IServiceCollection AddApplicationStorageDataProtection(this IServiceCollection services, IApplicationStorageService storage, X509Certificate2 cert =null, string applicationName =null, params X509Certificate2[] unprotects )
         {
-            if (container != null)
+            if (storage != null)
             {
               
 
@@ -59,7 +59,7 @@ namespace SInnovations.ServiceFabric.Storage.Extensions
                     }
 
 
-                    var storage = container.GetService<IApplicationStorageService>();
+                   // var storage = container.GetService<IApplicationStorageService>();
 
                     if (cert == null)
                     {

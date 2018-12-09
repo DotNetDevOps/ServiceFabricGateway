@@ -34,6 +34,7 @@ using Autofac.Extensions.DependencyInjection;
 using Autofac.Core;
 using Autofac.Core.Lifetime;
 using Microsoft.AspNetCore.Builder;
+using DotNetDevOps.ServiceFabric.Hosting;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 {
@@ -145,6 +146,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
         public ILifetimeScope Parent { get; internal set; }
         public IServiceCollection Services { get; internal set; }
     }
+     
     public class Test : IServiceProviderFactory<ContainerBuilder>
     {
         private readonly ILifetimeScope container;
@@ -268,7 +270,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
 #endif
             services.AddSingleton<IStartupFilter>(new UseForwardedHeadersStartupFilter(
                 $"{this.Context.ServiceName.AbsoluteUri.Substring("fabric:/".Length)}/{Context.CodePackageActivationContext.CodePackageVersion}", _logger));
-            services.AddSingleton<IStartupFilter>(new ApplicationInsightsStartupFilter1());
+           // services.AddSingleton<IStartupFilter>(new ApplicationInsightsStartupFilter1());
         }
 
 
@@ -416,6 +418,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                 //  services.AddSingleton(sp=>Container.Resolve<ILoggerFactory>())
                 // services.AddSingleton(Container.Resolve< IServiceProviderFactory<ContainerBuilder>>());
                 services.AddSingleton<IServiceProviderFactory<ContainerBuilder>>(new Test(Container));
+             //   services.AddSingleton<IServiceProviderFactory<IServiceCollection>>(new ChildServiceProviderFactory(Container));
             });
 
             WebBuilderConfiguration?.Invoke(builder);
