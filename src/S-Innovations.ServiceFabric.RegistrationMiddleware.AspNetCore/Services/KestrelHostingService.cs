@@ -264,6 +264,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
             services.AddSingleton<IApplicationManager>(this);
 
             services.AddSingleton(Container);
+           // services.AddSingleton<IServiceProviderFactory<ContainerBuilder>,>
 
 #if NETCORE10
             services.AddSingleton<IServiceProviderFactory<IServiceCollection>>(new UnityServiceProviderFactory(Container));
@@ -296,6 +297,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                             var config = context.GetConfigurationPackageObject("Config");
 
                             var builder=new WebHostBuilder()
+                           
                                 .UseKestrel()
                                 .ConfigureServices(ConfigureServices)
                              //   .UseCustomServiceFabricIntegration(listener as CustomKestrelCommunicationListener , ServiceFabricIntegrationOptions.UseUniqueServiceUrl)
@@ -418,7 +420,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                 //  services.AddSingleton(sp=>Container.Resolve<ILoggerFactory>())
                 // services.AddSingleton(Container.Resolve< IServiceProviderFactory<ContainerBuilder>>());
                 services.AddSingleton<IServiceProviderFactory<ContainerBuilder>>(new Test(Container));
-             //   services.AddSingleton<IServiceProviderFactory<IServiceCollection>>(new ChildServiceProviderFactory(Container));
+                services.AddSingleton(sp=>Container.Resolve< IServiceProviderFactory<IServiceCollection>>());
+                //   services.AddSingleton<IServiceProviderFactory<IServiceCollection>>(new ChildServiceProviderFactory(Container));
             });
 
             WebBuilderConfiguration?.Invoke(builder);
