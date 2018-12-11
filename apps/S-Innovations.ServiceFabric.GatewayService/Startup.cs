@@ -231,6 +231,7 @@ namespace SInnovations.ServiceFabric.GatewayService
             {
                 router.MapGet("services", async (HttpContext context) =>
                 {
+                    context.RequestServices.GetService<ILoggerFactory>().CreateLogger("A").LogInformation("HEJ");
                     var a = context.RequestServices.GetService<NginxGatewayService>();
 
                     await context.Response.WriteAsync(JToken.FromObject(await a.GetGatewayServicesAsync(context.RequestAborted)).ToString(Formatting.Indented));
