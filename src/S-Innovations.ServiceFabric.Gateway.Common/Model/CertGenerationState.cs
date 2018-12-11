@@ -43,7 +43,7 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
     [DataContract]
     public class CertGenerationState: IExtensibleDataObject
     {
-        public const string CERTGENERATION_VERSION = "1.2";
+        public const string CERTGENERATION_VERSION = "1.3";
 
         private ExtensionDataObject theData;
 

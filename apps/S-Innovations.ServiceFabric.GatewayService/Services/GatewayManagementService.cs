@@ -784,7 +784,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 X509Certificate2 clientCertificate =
                      new X509Certificate2(bytes);
-                return clientCertificate.NotAfter.ToUniversalTime() < DateTime.UtcNow.Subtract(delta);
+
+                logger.LogInformation("Validating certificate {NotAfter} > {CheckTime} is not expering", clientCertificate.NotAfter.ToUniversalTime(), DateTime.UtcNow.Subtract(delta));
+
+                return clientCertificate.NotAfter.ToUniversalTime() > DateTime.UtcNow.Subtract(delta);
             }
             catch (Exception ex)
             {
