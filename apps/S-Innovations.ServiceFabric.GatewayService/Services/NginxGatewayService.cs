@@ -830,7 +830,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 {
 
                     var state = await gateway.GetCertGenerationInfoAsync(hostname, token);
-                    if (state != null && state.RunAt.HasValue && state.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14)))
+                    if (state != null && state.Version == CertGenerationState.CERTGENERATION_VERSION && state.RunAt.HasValue && state.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14)))
                     {
                         return state;
                     }

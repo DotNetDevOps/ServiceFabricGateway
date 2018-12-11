@@ -43,6 +43,8 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
     [DataContract]
     public class CertGenerationState: IExtensibleDataObject
     {
+        public const string CERTGENERATION_VERSION = "1.0";
+
         private ExtensionDataObject theData;
 
         public virtual ExtensionDataObject ExtensionData
@@ -50,9 +52,12 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
             get { return theData; }
             set { theData = value; }
         }
+
+
         public CertGenerationState()
         {
             RunAt = DateTimeOffset.UtcNow;
+            Version = CERTGENERATION_VERSION;
         }
         public CertGenerationState(bool completed) : this()
         {
@@ -66,13 +71,7 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
         [DataMember]
         public int Counter { get; private set; } = 0;
 
-        public CertGenerationState Complete()
-        {
-            this.Completed = true;
-            this.RunAt = DateTimeOffset.UtcNow;
-            return Clone();
-          
-        }
+       
         [DataMember]
         public string HostName { get; set; }
         [DataMember]
@@ -83,6 +82,26 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
         public CertHttpChallengeInfo HttpChallengeInfo { get; private set; }
         [DataMember]
         public string OrderLocation { get; private set; }
+
+        [DataMember]
+        public string Version { get; private set; }
+
+        public CertGenerationState Refresh(bool force, string hostname, SslOptions options)
+        {
+            Completed = !force && Completed;
+            hostname = HostName;
+            SslOptions = options;
+            return Clone();
+        }
+
+        public CertGenerationState Complete()
+        {
+            this.Completed = true;
+            this.RunAt = DateTimeOffset.UtcNow;
+            this.Version = CERTGENERATION_VERSION;
+            return Clone();
+
+        }
 
         public CertGenerationState SetCertHttpChallengeLocation(string location)
         {
@@ -119,7 +138,8 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
                 SslOptions = new SslOptions { Enabled = SslOptions.Enabled, SignerEmail = SslOptions.SignerEmail, UseHttp01Challenge = SslOptions.UseHttp01Challenge },
                 RunAt = RunAt,
                 HttpChallengeInfo = HttpChallengeInfo?.Clone(),
-                OrderLocation = OrderLocation, Counter=Counter, ExtensionData = ExtensionData
+                OrderLocation = OrderLocation, Counter=Counter, ExtensionData = ExtensionData,
+                Version = Version
             };
         }
 

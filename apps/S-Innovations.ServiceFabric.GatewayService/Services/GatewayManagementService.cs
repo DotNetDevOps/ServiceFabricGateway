@@ -301,7 +301,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 var certInfoLookup = await certs.TryGetValueAsync(tx1, hostname, LockMode.Default, GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
                 certInfo = certInfoLookup.Value;
 
-                if (certInfo.Completed)
+                if (certInfo.Completed && certInfo.Version == CertGenerationState.CERTGENERATION_VERSION )
                 {
                     logger.LogInformation("certificate for {hostname} already completed", hostname);
                     return;
@@ -319,7 +319,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
 
             if (certInfo.Counter < 3 && ((await Task.WhenAll(certBlob.ExistsAsync(), keyBlob.ExistsAsync(), fullchain.ExistsAsync())).Any(t => t == false) ||
-                 await CertExpiredAsync(certBlob)))
+                 await CertExpiredAsync(certBlob, TimeSpan.FromDays(21))))
             {
 
                 if (certInfo.SslOptions.UseHttp01Challenge)
@@ -772,7 +772,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 }
             }
         }
-        private async Task<bool> CertExpiredAsync(CloudBlockBlob certBlob)
+        private async Task<bool> CertExpiredAsync(CloudBlockBlob certBlob, TimeSpan delta)
         {
             try
             {
@@ -782,7 +782,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 X509Certificate2 clientCertificate =
                      new X509Certificate2(bytes);
-                return clientCertificate.NotAfter.ToUniversalTime() < DateTime.UtcNow;
+                return clientCertificate.NotAfter.ToUniversalTime() < DateTime.UtcNow.Subtract(delta);
             }
             catch (Exception ex)
             {
@@ -1088,7 +1088,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     {
                         await certs.AddOrUpdateAsync(tx, hostname,
                             new CertGenerationState { HostName = hostname, SslOptions = options, },
-                          (key, old) => new CertGenerationState(!force && old.Completed) { HostName = hostname, SslOptions = options }, GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
+                          (key, old) => old.Refresh(force,hostname,options), GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
                         await tx.CommitAsync();
                     }
                 });
