@@ -301,6 +301,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 var certInfoLookup = await certs.TryGetValueAsync(tx1, hostname, LockMode.Default, GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
                 certInfo = certInfoLookup.Value;
 
+                logger.LogInformation("Located {@state} for {hostname}", certInfo, hostname);
+
                 if (certInfo.Completed && certInfo.Version == CertGenerationState.CERTGENERATION_VERSION )
                 {
                     logger.LogInformation("certificate for {hostname} already completed", hostname);
@@ -1088,7 +1090,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     {
                         await certs.AddOrUpdateAsync(tx, hostname,
                             new CertGenerationState { HostName = hostname, SslOptions = options, },
-                          (key, old) => old.Refresh(force,hostname,options), GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
+                          (key, old) => { var newValue= old.Refresh(force, hostname, options); logger.LogInformation("Request for {hostname} updated state {@state}",hostname,newValue);   return newValue; }, 
+                          GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
                         await tx.CommitAsync();
                     }
                 });
