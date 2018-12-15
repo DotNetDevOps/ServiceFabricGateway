@@ -15,6 +15,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions;
+using System.IO;
+using System.Reflection;
+using Microsoft.AspNetCore.Hosting.Internal;
 
 namespace SInnovations.ServiceFabric.GatewayService
 {
@@ -58,6 +61,9 @@ namespace SInnovations.ServiceFabric.GatewayService
             // Marking as observed to prevent process exit.
            // e.SetObserved();
         }
+
+      
+
         public static async Task Main(string[] args)
         {
 
@@ -81,6 +87,9 @@ namespace SInnovations.ServiceFabric.GatewayService
                //Setup services that exists on root, shared in all services
                .ConfigureServices((context, services) =>
                {
+
+                  
+
                    services.AddOptions();
 
                    services.AddServiceFabricApplicationStorage(true);

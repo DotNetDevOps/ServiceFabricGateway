@@ -1,6 +1,9 @@
 ﻿using Autofac;
 using DotNetDevOps.ServiceFabric.Hosting;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.ServiceFabric;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -15,7 +18,9 @@ using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions
 {
@@ -141,8 +146,46 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
 
             });
 
+            container.ConfigureServices((context,services) =>
+            {
+                var _hostingEnvironment = new Microsoft.AspNetCore.Hosting.Internal.HostingEnvironment();
+
+
+                var _options = new WebHostOptions(context.Configuration, Assembly.GetEntryAssembly()?.GetName().Name)
+                {
+
+                };
+                // Microsoft.AspNetCore.Hosting.Internal.HostingEnvironmentExtensions.Initialize
+
+                var contentRootPath = ResolveContentRootPath(_options.ContentRootPath, AppContext.BaseDirectory);
+                _hostingEnvironment.Initialize(contentRootPath, _options);
+
+                services.AddSingleton<Microsoft.AspNetCore.Hosting.IHostingEnvironment>(_hostingEnvironment);
+
+                services.AddApplicationInsightsTelemetry();
+
+                services
+                                      // .AddSingleton<ITelemetryInitializer>((serviceProvider) => FabricTelemetryInitializerExtension.CreateFabricTelemetryInitializer(serviceContext))
+                                       .AddSingleton<ITelemetryModule>(new MyServiceRemotingDependencyTrackingTelemetryModule())
+                                       .AddSingleton<ITelemetryModule>(new MyServiceRemotingRequestTrackingTelemetryModule())
+                                       .AddSingleton<ITelemetryInitializer>(new CodePackageVersionTelemetryInitializer())
+                                       .AddSingleton<ITelemetryModule>(new MyTestModule());
+
+            });
 
             return container;
+        }
+        private static string ResolveContentRootPath(string contentRootPath, string basePath)
+        {
+            if (string.IsNullOrEmpty(contentRootPath))
+            {
+                return basePath;
+            }
+            if (Path.IsPathRooted(contentRootPath))
+            {
+                return contentRootPath;
+            }
+            return Path.Combine(Path.GetFullPath(basePath), contentRootPath);
         }
 
         public static IHostBuilder WithServiceProxy<TServiceInterface>(this IHostBuilder container, string serviceName, string listenerName = null)

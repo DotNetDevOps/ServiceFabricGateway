@@ -304,14 +304,14 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                              //   .ConfigureServices((services)=>{ services.AddTransient<IStartupFilter, UseForwardedHeadersStartupFilter>(); })
                                 .UseContentRoot(Directory.GetCurrentDirectory());
 
-                            var appInsightKey=Container.Resolve<IOptions<ApplicationInsights>>().Value?.InstrumentationKey;
+                            //var appInsightKey=Container.Resolve<IOptions<ApplicationInsights>>().Value?.InstrumentationKey;
 
-                            if (!string.IsNullOrEmpty(appInsightKey))
-                            {
-                                 builder.UseApplicationInsights(appInsightKey);
+                            //if (!string.IsNullOrEmpty(appInsightKey))
+                            //{
+                            //     builder.UseApplicationInsights(appInsightKey);
 
                                 
-                            }
+                            //}
 
 
 
@@ -321,12 +321,12 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services
                                 services.AddSingleton(listener);
                                 services.AddSingleton((sp)=> new KestrelHostingAddresss{Url = this.GetAddresses()["kestrel"]  });
                              //   services.AddTransient<TelemetryConfiguration>(sp=>sp.GetRequiredService<IOptions<TelemetryConfiguration>>().Value);
-                                services
-                                    .AddSingleton<ITelemetryInitializer>((serviceProvider) => FabricTelemetryInitializerExtension.CreateFabricTelemetryInitializer(serviceContext))
-                                    .AddSingleton<ITelemetryModule>(new MyServiceRemotingDependencyTrackingTelemetryModule())
-                                    .AddSingleton<ITelemetryModule>(new MyServiceRemotingRequestTrackingTelemetryModule())
-                                    .AddSingleton<ITelemetryInitializer>(new CodePackageVersionTelemetryInitializer())
-                                    .AddSingleton<ITelemetryModule>(new MyTestModule());
+                                //services
+                                //    .AddSingleton<ITelemetryInitializer>((serviceProvider) => FabricTelemetryInitializerExtension.CreateFabricTelemetryInitializer(serviceContext))
+                                //    .AddSingleton<ITelemetryModule>(new MyServiceRemotingDependencyTrackingTelemetryModule())
+                                //    .AddSingleton<ITelemetryModule>(new MyServiceRemotingRequestTrackingTelemetryModule())
+                                //    .AddSingleton<ITelemetryInitializer>(new CodePackageVersionTelemetryInitializer())
+                                //    .AddSingleton<ITelemetryModule>(new MyTestModule());
 
                              
 
