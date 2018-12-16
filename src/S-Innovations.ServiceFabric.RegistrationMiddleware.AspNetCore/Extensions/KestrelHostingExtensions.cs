@@ -145,7 +145,12 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
 
 
             });
+            container.ConfigureContainer<ContainerBuilder>(services =>
+            {
+                services.RegisterInstance(new OptionRegistration {
+                    ServiceType = typeof(Microsoft.AspNetCore.Hosting.IHostingEnvironment), ServiceLifetime = ServiceLifetime.Singleton, ShouldIgnore=true });
 
+            });
             container.ConfigureServices((context,services) =>
             {
                 var _hostingEnvironment = new Microsoft.AspNetCore.Hosting.Internal.HostingEnvironment();
@@ -161,6 +166,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
                 _hostingEnvironment.Initialize(contentRootPath, _options);
 
                 services.AddSingleton<Microsoft.AspNetCore.Hosting.IHostingEnvironment>(_hostingEnvironment);
+              
 
                 services.AddApplicationInsightsTelemetry();
 
