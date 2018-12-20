@@ -69,7 +69,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Startup
                     var original = context.Request.PathBase;
                     try
                     {
-                        if (context.Request.Headers.TryGetValue(XForwardedPathBase, out StringValues value))
+                        if (context.Request.Headers.TryGetValue(XForwardedPathBase, out StringValues value) && value.FirstOrDefault() != "/")
                         {
                             context.Request.PathBase = new PathString(value);
                         }
