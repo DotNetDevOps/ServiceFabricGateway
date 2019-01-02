@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotNetDevOps.ServiceFabric.Hosting" Version="1.0.0-ci-20181220-02" />
+    <PackageReference Include="DotNetDevOps.ServiceFabric.Hosting" Version="1.0.0-ci-20190102-01" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.5.1" />
     <PackageReference Include="Microsoft.ApplicationInsights.ServiceFabric.Native" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.2.0" />
