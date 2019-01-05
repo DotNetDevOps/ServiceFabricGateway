@@ -301,9 +301,15 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 var certInfoLookup = await certs.TryGetValueAsync(tx1, hostname, LockMode.Default, GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
                 certInfo = certInfoLookup.Value;
 
-                logger.LogInformation("Located {@state} for {hostname}", certInfo, hostname);
+             
 
-                if (certInfo.Completed && certInfo.Version == CertGenerationState.CERTGENERATION_VERSION )
+                var stateNotNull = certInfo != null;
+                var VersionMatches = certInfo.Version == CertGenerationState.CERTGENERATION_VERSION;
+                var hasRunValid = certInfo.RunAt.HasValue && certInfo.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14));
+
+                logger.LogInformation("Located {@state} for {hostname} stateNotNull={stateNotNull} VersionMatches={VersionMatches} hasRunValid={hasRunValid}", certInfo, hostname, stateNotNull, VersionMatches, hasRunValid);
+                 
+                if (stateNotNull && VersionMatches && hasRunValid)
                 {
                     logger.LogInformation("certificate for {hostname} already completed", hostname);
                     return;
