@@ -304,8 +304,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
              
 
                 var stateNotNull = certInfo != null;
-                var VersionMatches = certInfo.Version == CertGenerationState.CERTGENERATION_VERSION;
-                var hasRunValid = certInfo.RunAt.HasValue && certInfo.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14));
+                var VersionMatches = stateNotNull&& certInfo.Version == CertGenerationState.CERTGENERATION_VERSION;
+                var hasRunValid = stateNotNull && certInfo.RunAt.HasValue && certInfo.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14));
 
                 logger.LogInformation("Located {@state} for {hostname} stateNotNull={stateNotNull} VersionMatches={VersionMatches} hasRunValid={hasRunValid}", certInfo, hostname, stateNotNull, VersionMatches, hasRunValid);
                  

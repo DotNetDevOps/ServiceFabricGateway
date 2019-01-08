@@ -832,8 +832,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     var state = await gateway.GetCertGenerationInfoAsync(hostname, token);
 
                     var stateNotNull = state != null;
-                    var VersionMatches = state.Version == CertGenerationState.CERTGENERATION_VERSION;
-                    var hasRunValid = state.RunAt.HasValue && state.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14));
+                    var VersionMatches = stateNotNull && state.Version == CertGenerationState.CERTGENERATION_VERSION;
+                    var hasRunValid = stateNotNull && state.RunAt.HasValue && state.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14));
                     _logger.LogInformation("Found {@state} for {hostname} stateNotNull={stateNotNull} VersionMatches={VersionMatches} hasRunValid={hasRunValid}", state,hostname, stateNotNull, VersionMatches,hasRunValid);
 
                     if (stateNotNull && VersionMatches && hasRunValid)
