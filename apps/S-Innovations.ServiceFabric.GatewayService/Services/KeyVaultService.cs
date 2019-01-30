@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Azure.KeyVault;
+using Microsoft.Extensions.Configuration;
 using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Query;
 using Microsoft.ServiceFabric.Actors.Runtime;
@@ -18,18 +19,42 @@ using System.Threading.Tasks;
 
 namespace SInnovations.ServiceFabric.GatewayService.Services
 {
+   
+
     public class KeyVaultService : StatelessService, IKeyVaultService, IAzureADTokenService
     {
         private readonly IConfigurationRoot configuration;
         private readonly AzureADConfiguration azureAD;
 
+        public KeyVaultClient Client { get; set; }
+
         public KeyVaultService(StatelessServiceContext serviceContext, IConfigurationRoot configuration, AzureADConfiguration azureAD) : base(serviceContext)
         {
             this.configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             this.azureAD = azureAD;
+
+            KeyVaultClient.AuthenticationCallback callback =
+                (authority, resource, scope) => this.GetTokenForResourceAsync(resource);
+
+            Client = new KeyVaultClient(callback);
+           
         }
 
+        public async Task<string[]> GetSecretsAsync(string key)
+        {
+            //  var certs = await Client.GetSecretAsync("","idsrv");
+            //  certs.
+            var vaultUri =this.Context.CodePackageActivationContext.GetConfigurationPackageObject("Config").Settings.Sections["AzureResourceManager"].Parameters["Azure.KeyVault.Uri"].Value;
+            
+            var certsVersions = await Client.GetSecretVersionsAsync(vaultUri, key);
 
+            var secrets = await Task.WhenAll(certsVersions.Select(k => Client.GetSecretAsync(k.Identifier.Identifier)));
+            var values = secrets.Select(s => s.Value).ToArray();
+            return values;
+            //var certs = secrets.Select(s => new X509Certificate2(Convert.FromBase64String(s.Value), (string)null, X509KeyStorageFlags.MachineKeySet)).ToArray();
+            //return certs;
+
+        }
 
         protected override IEnumerable<ServiceInstanceListener> CreateServiceInstanceListeners()
         {

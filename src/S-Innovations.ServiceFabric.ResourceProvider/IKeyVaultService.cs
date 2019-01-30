@@ -8,7 +8,11 @@ namespace SInnovations.ServiceFabric.ResourceProvider
     public interface IKeyVaultService : IService
     {
         Task<string> GetSecretAsync(string key);
+        Task<string[]> GetSecretsAsync(string key);
+
     }
+
+   
 
     public interface IAzureADTokenService : IService
     {
@@ -16,4 +20,5 @@ namespace SInnovations.ServiceFabric.ResourceProvider
         Task<string> GetTokenForResourceAsync(string resource);
     }
 
+   
 }
