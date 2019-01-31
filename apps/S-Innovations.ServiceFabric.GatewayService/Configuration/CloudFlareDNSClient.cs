@@ -84,7 +84,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
         private async Task<(string,string)> GetCloudFlareCredentialsAsync(string zone)
         {
            
-            var key = await keyVaultSecretManager.GetSecretAsync("CloudFlare_"+zone) ??
+            var key = await keyVaultSecretManager.GetSecretAsync("CloudFlare-"+zone) ??
                 await keyVaultSecretManager.GetSecretAsync("CloudFlare");
 
          //   var key = secrets.CloudFlare;
