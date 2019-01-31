@@ -17,18 +17,19 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
 
      
         private readonly ICloudFlareZoneService zoneService;
+        private readonly KeyVaultSecretManager keyVaultSecretManager;
 
 
         //private readonly ICloudFlareZoneService zoneService;
         private readonly HttpClient http;
-        private readonly KeyVaultOptions secrets;
+       // private readonly KeyVaultOptions secrets;
       
-        public CloudFlareDNSClient(HttpClient http, IOptions<KeyVaultOptions> secrets, ICloudFlareZoneService zoneService)
+        public CloudFlareDNSClient(HttpClient http,  ICloudFlareZoneService zoneService, KeyVaultSecretManager keyVaultSecretManager)
         {
             this.zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
-
+            this.keyVaultSecretManager = keyVaultSecretManager ?? throw new ArgumentNullException(nameof(keyVaultSecretManager));
             this.http = http ?? throw new ArgumentNullException(nameof(http));
-            this.secrets = secrets?.Value ?? throw new ArgumentNullException(nameof(secrets));
+            
             // this.zoneService = cloudFlareZoneService;
 
 
@@ -37,7 +38,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
         public async Task EnsureTxtRecordCreatedAsync(string dnsIdentifier, string recordName, string recordValue)
         {
             
-            var (authEmail, authKey) = GetCloudFlareCredentials();
+        
 
             //  var zoneService = ServiceProxy.Create<ICloudFlareZoneService>(new Uri($"{codePackageActivationContext.ApplicationName}/{nameof(GatewayManagementService)}"), dnsIdentifier.ToPartitionHashFunction());
 
@@ -45,6 +46,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
 
             if (!string.IsNullOrEmpty(zone))
             {
+                var (authEmail, authKey) = await GetCloudFlareCredentialsAsync(zone);
+
                 var get = new HttpRequestMessage(HttpMethod.Get, $"https://api.cloudflare.com/client/v4/zones/{zone}/dns_records?type=TXT&name={recordName}.{dnsIdentifier}");
                 get.Headers.Add("X-Auth-Email", authEmail);
                 get.Headers.Add("X-Auth-Key", authKey);
@@ -78,9 +81,13 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
 
         }
 
-        private (string,string) GetCloudFlareCredentials()
+        private async Task<(string,string)> GetCloudFlareCredentialsAsync(string zone)
         {
-            var key = secrets.CloudFlare;
+           
+            var key = await keyVaultSecretManager.GetSecretAsync("CloudFlare_"+zone) ??
+                await keyVaultSecretManager.GetSecretAsync("CloudFlare");
+
+         //   var key = secrets.CloudFlare;
             if (string.IsNullOrEmpty(key))
             {
                 throw new Exception("Cloudflare credentials are not configured");
@@ -94,7 +101,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
             var zone = await zoneService.GetZoneIdAsync(dnsIdentifier);
             if (!string.IsNullOrEmpty(zone))
             {
-                var (authEmail, authKey) = GetCloudFlareCredentials();
+                var (authEmail, authKey) = await GetCloudFlareCredentialsAsync(zone);
 
 
                 var get = new HttpRequestMessage(HttpMethod.Get, $"https://api.cloudflare.com/client/v4/zones/{zone}/dns_records?type=TXT&name={recordName}.{dnsIdentifier}");
