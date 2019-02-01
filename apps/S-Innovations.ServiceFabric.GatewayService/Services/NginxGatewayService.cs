@@ -818,7 +818,9 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
         public async Task<CertGenerationState> GetCertGenerationStateAsync(string hostname, SslOptions options, bool force, string serviceVersion, CancellationToken token)
         {
+            
             _logger.LogInformation("Begin GetCertGenerationState {hostname}, Force={force}",hostname,force);
+
 
             try
             {
@@ -839,7 +841,11 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     if (stateNotNull && state.Counter >= 3 && state.ServiceVersion != serviceVersion)
                     {
 
-                        
+                        _logger.LogInformation("Requesting new cert for {hostname} due counter error and new service version",hostname);
+                    }else if(stateNotNull && !state.Completed && state.RunAt.HasValue && state.RunAt < DateTimeOffset.UtcNow.Subtract(TimeSpan.FromMinutes(10))) 
+                    {
+                        _logger.LogInformation("Requesting new cert for {hostname} due not completed within 10min", hostname);
+                         
                     }
                     else
                     {

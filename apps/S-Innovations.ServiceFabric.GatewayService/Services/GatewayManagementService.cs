@@ -308,8 +308,12 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 var hasRunValid = stateNotNull && certInfo.RunAt.HasValue && certInfo.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14));
 
                 logger.LogInformation("Located {@state} for {hostname} stateNotNull={stateNotNull} VersionMatches={VersionMatches} hasRunValid={hasRunValid}", certInfo, hostname, stateNotNull, VersionMatches, hasRunValid);
-                 
-                if (stateNotNull && VersionMatches && hasRunValid)
+
+                if (stateNotNull && !certInfo.Completed && certInfo.RunAt.HasValue && certInfo.RunAt < DateTimeOffset.UtcNow.Subtract(TimeSpan.FromMinutes(10)))
+                {
+                    logger.LogInformation("creating new cert for {hostname} due not completed within 10min", hostname);
+
+                }else  if (stateNotNull && VersionMatches && hasRunValid )
                 {
                     logger.LogInformation("certificate for {hostname} already completed", hostname);
                     return;
