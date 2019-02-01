@@ -87,7 +87,7 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
         public string Version { get; private set; }
 
         [DataMember]
-        public string ServiceVersion { get; private set; }
+        public string ServiceVersion { get;  set; }
 
         public CertGenerationState Refresh(bool force, string hostname, SslOptions options,string serviceVersion)
         {
@@ -98,6 +98,8 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
             {
                 ServiceVersion = serviceVersion;
                 Counter = 0;
+                HttpChallengeInfo = null;
+
             }
             return Clone();
         }
