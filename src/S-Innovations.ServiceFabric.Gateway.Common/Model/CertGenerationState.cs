@@ -98,7 +98,7 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
             {
                 ServiceVersion = serviceVersion;
                 Counter = 0;
-                HttpChallengeInfo = null;
+               
 
             }
             return Clone();
