@@ -86,11 +86,19 @@ namespace SInnovations.ServiceFabric.Gateway.Common.Model
         [DataMember]
         public string Version { get; private set; }
 
-        public CertGenerationState Refresh(bool force, string hostname, SslOptions options)
+        [DataMember]
+        public string ServiceVersion { get; private set; }
+
+        public CertGenerationState Refresh(bool force, string hostname, SslOptions options,string serviceVersion)
         {
             Completed = !force && Completed;
             hostname = HostName;
             SslOptions = options;
+            if (ServiceVersion != serviceVersion)
+            {
+                ServiceVersion = serviceVersion;
+                Counter = 0;
+            }
             return Clone();
         }
 

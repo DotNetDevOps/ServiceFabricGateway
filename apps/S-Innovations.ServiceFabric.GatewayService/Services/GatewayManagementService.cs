@@ -1086,7 +1086,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             //    DateTime.UtcNow,
             //    notification.ServiceName);
         }
-        public async Task RequestCertificateAsync(string hostname, SslOptions options, bool force)
+        public async Task RequestCertificateAsync(string hostname, SslOptions options,string serviceVersion, bool force)
         {
             logger.LogInformation("Begin request for {hostname} certificate with {@ssl_options}. Force={force}", hostname, options, force);
             try
@@ -1099,7 +1099,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     {
                         await certs.AddOrUpdateAsync(tx, hostname,
                             new CertGenerationState { HostName = hostname, SslOptions = options, },
-                          (key, old) => { var newValue= old.Refresh(force, hostname, options); logger.LogInformation("Request for {hostname} updated state {@state}",hostname,newValue);   return newValue; }, 
+                          (key, old) => { var newValue= old.Refresh(force, hostname, options, serviceVersion); logger.LogInformation("Request for {hostname} updated state {@state}",hostname,newValue);   return newValue; }, 
                           GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
                         await tx.CommitAsync();
                     }

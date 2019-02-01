@@ -362,8 +362,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                     if (sslOn)
                     {
-
-                        var state = await GetCertGenerationStateAsync(serverName, serverGroup.Value.First().Ssl, false, token);
+                        
+                        var state = await GetCertGenerationStateAsync(serverName, serverGroup.Value.First().Ssl, false, serverGroup.Value.First().ServiceVersion, token);
 
                         _logger.LogInformation("Certificate for {servername}: IsNull={isNull} IsCompleted={isCompleted}", serverName, state == null, state?.Completed??false);
                         sslOn = state != null && state.Completed;
@@ -516,7 +516,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
 
 
-            await GetCertGenerationStateAsync(serverName, gatewayServiceRegistrationData.Ssl, true, token);
+            await GetCertGenerationStateAsync(serverName, gatewayServiceRegistrationData.Ssl, true, gatewayServiceRegistrationData.ServiceVersion, token);
 
             return false;
                
@@ -816,7 +816,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             return partitions;
         }
 
-        public async Task<CertGenerationState> GetCertGenerationStateAsync(string hostname, SslOptions options, bool force, CancellationToken token)
+        public async Task<CertGenerationState> GetCertGenerationStateAsync(string hostname, SslOptions options, bool force, string serviceVersion, CancellationToken token)
         {
             _logger.LogInformation("Begin GetCertGenerationState {hostname}, Force={force}",hostname,force);
 
@@ -836,16 +836,25 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     var hasRunValid = stateNotNull && state.RunAt.HasValue && state.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14));
                     _logger.LogInformation("Found {@state} for {hostname} stateNotNull={stateNotNull} VersionMatches={VersionMatches} hasRunValid={hasRunValid}", state,hostname, stateNotNull, VersionMatches,hasRunValid);
 
-                    if (stateNotNull && VersionMatches && hasRunValid)
+                    if (state.Counter >= 3 && state.ServiceVersion != serviceVersion)
                     {
-                        return state;
+
+                        return null;
+                    }
+                    else
+                    {
+
+                        if (stateNotNull && VersionMatches && hasRunValid)
+                        {
+                            return state;
+                        }
                     }
                 }
 
 
                 _logger.LogInformation("Requesting certificate for {hostname}, Force={force}", hostname, force);
 
-                await gateway.RequestCertificateAsync(hostname, options, force);
+                await gateway.RequestCertificateAsync(hostname, options, serviceVersion, force);
 
             } catch(Exception ex)
             {

@@ -26,7 +26,7 @@ namespace SInnovations.ServiceFabric.Gateway.Actors
         /// <returns></returns>
         Task RegisterGatewayServiceAsync(GatewayServiceRegistrationData data);
 
-        Task RequestCertificateAsync(string hostname, SslOptions options, bool force );
+        Task RequestCertificateAsync(string hostname, SslOptions options,string serviceVersion, bool force );
         Task<CertGenerationState> GetCertGenerationInfoAsync(string hostname, CancellationToken token);
         Task<GatewayServiceRegistrationData[]> GetGatewayServicesAsync(CancellationToken cancellationToken);
         Task<DateTimeOffset> GetLastUpdatedAsync(CancellationToken token);
