@@ -836,10 +836,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     var hasRunValid = stateNotNull && state.RunAt.HasValue && state.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14));
                     _logger.LogInformation("Found {@state} for {hostname} stateNotNull={stateNotNull} VersionMatches={VersionMatches} hasRunValid={hasRunValid}", state,hostname, stateNotNull, VersionMatches,hasRunValid);
 
-                    if (state.Counter >= 3 && state.ServiceVersion != serviceVersion)
+                    if (stateNotNull && state.Counter >= 3 && state.ServiceVersion != serviceVersion)
                     {
 
-                        return null;
+                        
                     }
                     else
                     {
