@@ -284,82 +284,93 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
             }
         }
+        private ConcurrentDictionary<string, SemaphoreSlim> blockers = new ConcurrentDictionary<string, SemaphoreSlim>();
         public async Task CreateCertificateAsync(string hostname, IReliableQueue<string> store, IReliableDictionary<string, CertGenerationState> certs, CloudBlobContainer certContainer, CancellationToken cancellationToken)
         {
             logger.LogInformation("Begin to create certificate for {hostname}", hostname);
 
             //We will assume wildcard certs.
 
+            var block = blockers.GetOrAdd(string.Join(".", hostname.Split(".").TakeLast(2)), new SemaphoreSlim(1, 1));
 
 
-
-
-            CertGenerationState certInfo = null;
-
-            using (var tx1 = StateManager.CreateTransaction())
+            try
             {
-                var certInfoLookup = await certs.TryGetValueAsync(tx1, hostname, LockMode.Default, GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
-                certInfo = certInfoLookup.Value;
+                await block.WaitAsync();
 
-             
 
-                var stateNotNull = certInfo != null;
-                var VersionMatches = stateNotNull&& certInfo.Version == CertGenerationState.CERTGENERATION_VERSION;
-                var hasRunValid = stateNotNull && certInfo.RunAt.HasValue && certInfo.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14));
 
-                logger.LogInformation("Located {@state} for {hostname} stateNotNull={stateNotNull} VersionMatches={VersionMatches} hasRunValid={hasRunValid}", certInfo, hostname, stateNotNull, VersionMatches, hasRunValid);
+                CertGenerationState certInfo = null;
 
-                if (stateNotNull && !certInfo.Completed && certInfo.RunAt.HasValue && certInfo.RunAt < DateTimeOffset.UtcNow.Subtract(TimeSpan.FromMinutes(10)))
+                using (var tx1 = StateManager.CreateTransaction())
                 {
-                    logger.LogInformation("creating new cert for {hostname} due not completed within 10min", hostname);
+                    var certInfoLookup = await certs.TryGetValueAsync(tx1, hostname, LockMode.Default, GatewayManagementServiceClient.TimeoutSpan, CancellationToken.None);
+                    certInfo = certInfoLookup.Value;
 
-                }else  if (stateNotNull && VersionMatches && hasRunValid )
-                {
-                    logger.LogInformation("certificate for {hostname} already completed", hostname);
-                    return;
+
+
+                    var stateNotNull = certInfo != null;
+                    var VersionMatches = stateNotNull && certInfo.Version == CertGenerationState.CERTGENERATION_VERSION;
+                    var hasRunValid = stateNotNull && certInfo.RunAt.HasValue && certInfo.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14));
+
+                    logger.LogInformation("Located {@state} for {hostname} stateNotNull={stateNotNull} VersionMatches={VersionMatches} hasRunValid={hasRunValid}", certInfo, hostname, stateNotNull, VersionMatches, hasRunValid);
+
+                    if (stateNotNull && !certInfo.Completed && certInfo.RunAt.HasValue && certInfo.RunAt < DateTimeOffset.UtcNow.Subtract(TimeSpan.FromMinutes(10)))
+                    {
+                        logger.LogInformation("creating new cert for {hostname} due not completed within 10min", hostname);
+
+                    }
+                    else if (stateNotNull && VersionMatches && hasRunValid)
+                    {
+                        logger.LogInformation("certificate for {hostname} already completed", hostname);
+                        return;
+                    }
                 }
-            }
 
 
 
-            var certCN = certInfo.SslOptions.UseHttp01Challenge ? hostname : string.Join(".", hostname.Split('.').TakeLast(2));
+                var certCN = certInfo.SslOptions.UseHttp01Challenge ? hostname : string.Join(".", hostname.Split('.').TakeLast(2));
 
-            var certBlob = certContainer.GetBlockBlobReference($"{certCN}.crt");
-            var fullchain = certContainer.GetBlockBlobReference($"{certCN}.fullchain.pem");
-            var keyBlob = certContainer.GetBlockBlobReference($"{certCN}.key");
+                var certBlob = certContainer.GetBlockBlobReference($"{certCN}.crt");
+                var fullchain = certContainer.GetBlockBlobReference($"{certCN}.fullchain.pem");
+                var keyBlob = certContainer.GetBlockBlobReference($"{certCN}.key");
 
 
 
-            if (certInfo.Counter < 3 && ((await Task.WhenAll(certBlob.ExistsAsync(), keyBlob.ExistsAsync(), fullchain.ExistsAsync())).Any(t => t == false) ||
-                 await CertExpiredAsync(certBlob, TimeSpan.FromDays(21))))
-            {
-
-                if (certInfo.SslOptions.UseHttp01Challenge)
+                if (certInfo.Counter < 3 && ((await Task.WhenAll(certBlob.ExistsAsync(), keyBlob.ExistsAsync(), fullchain.ExistsAsync())).Any(t => t == false) ||
+                     await CertExpiredAsync(certBlob, TimeSpan.FromDays(21))))
                 {
-                    await HandleHttpChallengeAsync(store, certs, hostname, certBlob, fullchain, keyBlob, certInfo);
+
+                    if (certInfo.SslOptions.UseHttp01Challenge)
+                    {
+                        await HandleHttpChallengeAsync(store, certs, hostname, certBlob, fullchain, keyBlob, certInfo);
+                    }
+                    else
+                    {
+                        await HandleDnsChallengeAsync(certs, certContainer, hostname, certBlob, fullchain, keyBlob, certInfo);
+                    }
                 }
                 else
                 {
-                    await HandleDnsChallengeAsync(certs, certContainer, hostname, certBlob, fullchain, keyBlob, certInfo);
+                    if (certInfo.Counter == 3)
+                    {
+                        logger.LogWarning("Failed to create certificate at retries {Count}", certInfo.Counter);
+                    }
+
+                    using (var tx = StateManager.CreateTransaction())
+                    {
+                        logger.LogInformation("Completing the certificate generation for {hostname}", hostname);
+                        await certs.SetAsync(tx, hostname, certInfo.Complete());
+                        await tx.CommitAsync();
+                        _lastUpdated = DateTimeOffset.UtcNow;
+                    }
                 }
+                logger.LogInformation("End to create certificate for {hostname}", hostname);
             }
-            else
+            finally
             {
-                if (certInfo.Counter == 3)
-                {
-                    logger.LogWarning("Failed to create certificate at retries {Count}", certInfo.Counter);
-                }
-
-                using (var tx = StateManager.CreateTransaction())
-                {
-                    logger.LogInformation("Completing the certificate generation for {hostname}", hostname);
-                    await certs.SetAsync(tx, hostname, certInfo.Complete());
-                    await tx.CommitAsync();
-                    _lastUpdated = DateTimeOffset.UtcNow;
-                }
+                block.Release();
             }
-            logger.LogInformation("End to create certificate for {hostname}", hostname);
-
         }
         // public static AcmeClient client = new AcmeClient(WellKnownServers.LetsEncryptV2);
         //  public static ConcurrentDictionary<string, Task<AcmeAccount>> _acmeaccounts = new ConcurrentDictionary<string, Task<AcmeAccount>>();

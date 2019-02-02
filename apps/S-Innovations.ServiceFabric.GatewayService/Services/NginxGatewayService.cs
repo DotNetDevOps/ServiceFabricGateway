@@ -822,10 +822,14 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             _logger.LogInformation("Begin GetCertGenerationState {hostname}, Force={force}",hostname,force);
 
 
+
             try
             {
+                var topLevelDomain = string.Join(".", hostname.Split(".").TakeLast(2));
+
+
                 var gateway = GatewayManagementServiceClient.GetProxy<IGatewayManagementService>(
-                    $"{this.Context.CodePackageActivationContext.ApplicationName}/{nameof(GatewayManagementService)}", hostname);
+                    $"{this.Context.CodePackageActivationContext.ApplicationName}/{nameof(GatewayManagementService)}", topLevelDomain);
                
 
                 if (!force)
@@ -845,7 +849,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                     }else if(stateNotNull && !state.Completed && state.RunAt.HasValue && state.RunAt < DateTimeOffset.UtcNow.Subtract(TimeSpan.FromMinutes(10))) 
                     {
                         _logger.LogInformation("Requesting new cert for {hostname} due not completed within 10min", hostname);
-                         
+                        //THis is just to handle an error case where above first check fired but a cert was not completed. 
                     }
                     else
                     {

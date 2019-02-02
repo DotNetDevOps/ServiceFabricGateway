@@ -17,6 +17,7 @@ using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services;
 using System;
 using System.Collections.Generic;
 using System.Fabric;
+using System.Linq;
 
 //[assembly: FabricTransportServiceRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
 //[assembly: FabricTransportActorRemotingProvider(RemotingListener = RemotingListener.V2Listener, RemotingClient = RemotingClient.V2Client)]
@@ -269,7 +270,8 @@ namespace SInnovations.ServiceFabric.GatewayService
                         logger.LogInformation("Acme-Challenge request for {host} with {applicationName}", request.Host.Host, applicationName);
 
                         var actorServiceUri = new Uri($"{applicationName}/{nameof(GatewayManagementService)}");
-                        var actorservice = ServiceProxy.Create<IGatewayManagementService>(actorServiceUri, request.Host.Host.ToPartitionHashFunction());
+                        var topLevelDomain = string.Join(".", request.Host.Host.Split(".").TakeLast(2));
+                        var actorservice = ServiceProxy.Create<IGatewayManagementService>(actorServiceUri, topLevelDomain.ToPartitionHashFunction());
 
                         var keyAuthString = await actorservice.GetChallengeResponseAsync(request.Host.Host,request.HttpContext.RequestAborted);
 

@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Application xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Name="fabric:/S-Innovations.ServiceFabric.GatewayApplication" xmlns="http://schemas.microsoft.com/2011/01/fabric">
   <Parameters>
-    <Parameter Name="AzureResourceManagerCertThumbrint" Value="96C4750E823FDC6FED743352BC8F7A89F73A87DD" />
+    <Parameter Name="AzureResourceManagerCertThumbrint" Value="74FF0EB8F8B8D242B37236FE4B4087F70AEE8A5B" />
     <Parameter Name="TenantId" Value="0840c760-6f7b-4556-b337-8c090e2d458d" />
     <Parameter Name="ApplicationStorageAccountId" Value="/subscriptions/4c6c1ea4-3605-4411-a44e-b65382627f5b/resourceGroups/sf-gateway-unix/providers/Microsoft.Storage/storageAccounts/tkokjew5d3ace3" />
     <Parameter Name="Azure.KeyVault.Uri" Value="https://sf-gateway-unix.vault.azure.net/" />
     <Parameter Name="GatewayServerName" Value="sf-gateway-unix.westeurope.cloudapp.azure.com" />
     <Parameter Name="GatewaySslOptions" Value="{'Enabled':true,'SignerEmail':'info@earthml.com','UseHttp01Challenge':true}" />
-    <Parameter Name="APPLICATION_INSIGHTS" Value="5d86688e-ff67-4b5b-8d87-021d6143af5a" />
+    <Parameter Name="APPLICATION_INSIGHTS" Value="f4fef710-1324-4883-8a67-d8d670c70d71" />
     <Parameter Name="GatewayManagementService_PlacementConstraints" Value="((NodeTypeName==nt1vm) &amp;&amp; (NodeName==_nt1vm_0 ||  NodeName==_nt1vm_1 || NodeName==_nt1vm_2 || NodeName==_nt1vm_3 || NodeName==_nt1vm_4))" />
   </Parameters>
 </Application>
