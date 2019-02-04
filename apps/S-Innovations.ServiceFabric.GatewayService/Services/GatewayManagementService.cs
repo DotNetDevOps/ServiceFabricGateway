@@ -284,10 +284,10 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
             }
         }
-        private ConcurrentDictionary<string, SemaphoreSlim> blockers = new ConcurrentDictionary<string, SemaphoreSlim>();
+        private static ConcurrentDictionary<string, SemaphoreSlim> blockers = new ConcurrentDictionary<string, SemaphoreSlim>();
         public async Task CreateCertificateAsync(string hostname, IReliableQueue<string> store, IReliableDictionary<string, CertGenerationState> certs, CloudBlobContainer certContainer, CancellationToken cancellationToken)
         {
-            logger.LogInformation("Begin to create certificate for {hostname}", hostname);
+            logger.LogInformation("Begin to create certificate for {hostname} on {node}", hostname,this.Context.NodeContext.NodeName);
 
             //We will assume wildcard certs.
 
@@ -297,7 +297,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
             try
             {
                 await block.WaitAsync();
-
+                logger.LogInformation("Entering block: certificate for {hostname} on {node}", hostname,this.Context.NodeContext.NodeName);
 
 
                 CertGenerationState certInfo = null;
@@ -365,12 +365,14 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         _lastUpdated = DateTimeOffset.UtcNow;
                     }
                 }
-                logger.LogInformation("End to create certificate for {hostname}", hostname);
+              
             }
             finally
             {
+                logger.LogInformation("leaving block: certificate for {hostname} on {node}", hostname,this.Context.NodeContext.NodeName);
                 block.Release();
             }
+            logger.LogInformation("End to create certificate for {hostname}", hostname);
         }
         // public static AcmeClient client = new AcmeClient(WellKnownServers.LetsEncryptV2);
         //  public static ConcurrentDictionary<string, Task<AcmeAccount>> _acmeaccounts = new ConcurrentDictionary<string, Task<AcmeAccount>>();
@@ -635,7 +637,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                                 //  Certes.Acme.
                                 //    var cert = new CertificateInfo(certChain, certKey);
                                 var cert = certChain.Certificate;
-
+                                
 
                                 var pem = cert.ToPem();
                                 var der = cert.ToDer();
