@@ -338,7 +338,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
 
                 if (certInfo.Counter < 3 && ((await Task.WhenAll(certBlob.ExistsAsync(), keyBlob.ExistsAsync(), fullchain.ExistsAsync())).Any(t => t == false) ||
-                     await CertExpiredAsync(certBlob, TimeSpan.FromDays(21))))
+                     await IsCertificateExperingWithInDelta(certBlob, TimeSpan.FromDays(21))))
                 {
 
                     if (certInfo.SslOptions.UseHttp01Challenge)
@@ -797,7 +797,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 }
             }
         }
-        private async Task<bool> CertExpiredAsync(CloudBlockBlob certBlob, TimeSpan delta)
+        private async Task<bool> IsCertificateExperingWithInDelta(CloudBlockBlob certBlob, TimeSpan delta)
         {
             try
             {
@@ -808,9 +808,9 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 X509Certificate2 clientCertificate =
                      new X509Certificate2(bytes);
 
-                logger.LogInformation("Validating certificate {NotAfter} > {CheckTime} is not expering", clientCertificate.NotAfter.ToUniversalTime(), DateTime.UtcNow.Subtract(delta));
+                logger.LogInformation("Validating certificate not after {NotAfter} is later than {CheckTime}", clientCertificate.NotAfter.ToUniversalTime(), DateTime.UtcNow.Add(delta));
 
-                return clientCertificate.NotAfter.ToUniversalTime() > DateTime.UtcNow.Subtract(delta);
+                return clientCertificate.NotAfter.ToUniversalTime() < DateTime.UtcNow.Add(delta);
             }
             catch (Exception ex)
             {
