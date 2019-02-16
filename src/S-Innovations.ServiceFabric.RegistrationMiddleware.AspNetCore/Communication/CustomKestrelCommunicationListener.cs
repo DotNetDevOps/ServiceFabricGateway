@@ -127,7 +127,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Communica
             return Task.FromResult(true);
         }
 
-        RetryPolicy retry = Policy
+        AsyncRetryPolicy retry = Policy
               .Handle<Exception>()
               .WaitAndRetryAsync(new[]
               {

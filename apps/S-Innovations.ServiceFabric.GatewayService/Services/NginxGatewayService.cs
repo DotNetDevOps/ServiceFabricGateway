@@ -978,7 +978,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                 }
             }
 
-            RetryPolicy retryPolicy = Policy
+            AsyncRetryPolicy retryPolicy = Policy
             .Handle<Exception>()            
             .WaitAndRetryAsync(5, retryAttempt =>
               TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),

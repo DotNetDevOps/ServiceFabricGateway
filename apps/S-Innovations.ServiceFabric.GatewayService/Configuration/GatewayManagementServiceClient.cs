@@ -43,7 +43,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
         }
         public static TimeSpan TimeoutSpan = TimeSpan.FromSeconds(10);
 
-        public static RetryPolicy TimeOutRetry= Policy
+        public static AsyncRetryPolicy TimeOutRetry= Policy
               .Handle<TimeoutException>()
               .WaitAndRetryAsync(
                 5, 
