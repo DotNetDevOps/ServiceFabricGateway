@@ -13,6 +13,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.ServiceFabric.Services.Remoting;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Serilog;
+using Serilog.Sinks.ApplicationInsights.Sinks.ApplicationInsights.TelemetryConverters;
 using SInnovations.ServiceFabric.Gateway.Common.Model;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services;
@@ -140,8 +141,8 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
                 //  var opt = context.Resolve<IOptions<ApplicationInsights>>();
                 var appInsights = new ApplicationInsights();
                 context.Configuration.GetSection("ApplicationInsights").Bind(appInsights);
-
-                logConfiguration.WriteTo.ApplicationInsightsTraces(appInsights.InstrumentationKey, Serilog.Events.LogEventLevel.Information);
+               
+                logConfiguration.WriteTo.ApplicationInsights(appInsights.InstrumentationKey,TelemetryConverter.Traces);
 
 
             });
@@ -225,7 +226,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
           where TStartup : class
         {
 
-            container.WithStatelessService<THostingService>(serviceType, child => { child.RegisterInstance(options); });
+            container.WithStatelessService<THostingService>(serviceType, (child,context) => { child.RegisterInstance(options); });
             return container;
         }
         public static IHostBuilder WithKestrelHosting<THostingService, TStartup>(this IHostBuilder container, string serviceType, Func<IComponentContext, KestrelHostingServiceOptions> options)
@@ -233,14 +234,14 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
           where TStartup : class
         {
 
-            container.WithStatelessService<THostingService>(serviceType, child => { child.Register(options).AsSelf().SingleInstance(); });
+            container.WithStatelessService<THostingService>(serviceType, (child,contex) => { child.Register(options).AsSelf().SingleInstance(); });
             return container;
         }
 
 
         public static IHostBuilder WithKestrelHosting(this IHostBuilder container, string serviceType, KestrelHostingServiceOptions options, Action<IWebHostBuilder> builder)
         {
-            container.WithStatelessService<KestrelHostingService>(serviceType, child =>
+            container.WithStatelessService<KestrelHostingService>(serviceType, (child,context) =>
             {
                 child.RegisterInstance(options);
                 child.RegisterType<KestrelHostingService>().WithProperty("WebBuilderConfiguration", builder);
