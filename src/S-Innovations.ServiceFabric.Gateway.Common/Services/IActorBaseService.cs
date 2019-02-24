@@ -1,4 +1,5 @@
-﻿using Microsoft.ServiceFabric.Actors;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.ServiceFabric.Actors;
 using Microsoft.ServiceFabric.Actors.Client;
 using Microsoft.ServiceFabric.Actors.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting;
@@ -48,6 +49,115 @@ namespace SInnovations.ServiceFabric
             Task.Run(async () => await task).ConfigureAwait(false);
         }
     }
+    public abstract class DocumentActor<T> : Actor
+    {
+        public const string DocumentStateKey = "Document";
+        protected readonly ILogger _logger;
+
+        protected DocumentActor(ActorService actorService, ActorId actorId, ILogger logger) : base(actorService, actorId)
+        {
+            this._logger = logger;
+        }
+        public Task<T> DocumentAsync => StateManager.GetStateAsync<T>(DocumentStateKey);
+        public Task<bool> HasDocumentAsync => StateManager.ContainsStateAsync(DocumentStateKey);
+        public Task SetDocumentAsync(T document) => StateManager.SetStateAsync(DocumentStateKey, document).ContinueWith(c => LastUpdated = DateTimeOffset.UtcNow);
+
+        public virtual Task DocumentUpdatedAsync()
+        {
+            return Task.CompletedTask;
+        }
+
+        public virtual Task InitializeAsync()
+        {
+            return Task.CompletedTask;
+        }
+
+        private IActorTimer _updateTimer;
+        protected DateTimeOffset? LastUpdated { get; set; }
+
+
+        protected DateTimeOffset _lastChecked = DateTimeOffset.MinValue;
+        protected Task _longRunningOnUpdated = null;
+        protected int attempts = 0;
+
+
+        protected override async Task OnActivateAsync()
+        {
+            await StateManager.SetStateAsync(Constants.ActivatedStateName, true);
+            await StateManager.SetStateAsync(Constants.LastUpdatedStateName, DateTimeOffset.UtcNow);
+
+
+            _updateTimer = RegisterTimer(
+             OnUpdateCheckAsync,                     // Callback method
+             null,                           // Parameter to pass to the callback method
+             TimeSpan.FromMinutes(0),  // Amount of time to delay before the callback is invoked
+             TimeSpan.FromSeconds(10)); // Time interval between invocations of the callback method
+        }
+
+        private async Task OnUpdateCheckAsync(object arg)
+        {
+
+            var updatedAt = await StateManager.GetStateAsync<DateTimeOffset>(Constants.LastUpdatedStateName);
+
+            if (_longRunningOnUpdated == null)
+            {
+
+                if (updatedAt > _lastChecked)
+                {
+
+                    if (attempts++ > 0)
+                    {
+                        _logger.LogInformation("Running OnUpdated for {actorId} {attempt} for {updatedAt}", Id.ToString(), attempts, updatedAt);
+                    }
+
+                    _longRunningOnUpdated = Task.Run(async () => { await OnUpdatedAsync(); _lastChecked = updatedAt; attempts = 0; });
+
+
+                }
+            }
+            else if (_longRunningOnUpdated.Status == TaskStatus.RanToCompletion)
+            {
+                _logger.LogDebug("OnUpdated for {actorId} ran to completion for {attempt} in {time}", Id.ToString(), attempts, DateTimeOffset.UtcNow.Subtract(updatedAt));
+
+                _longRunningOnUpdated = null;
+            }
+            else if (_longRunningOnUpdated.Status == TaskStatus.Faulted)
+            {
+                _logger.LogInformation(_longRunningOnUpdated.Exception, "OnUpdated for {actorId} faulted in {time} and will reset", Id.ToString(), DateTimeOffset.UtcNow.Subtract(updatedAt));
+                _longRunningOnUpdated = null;
+                if (attempts > 1)
+                {
+                    _lastChecked = updatedAt;
+                }
+            }
+            else if (_longRunningOnUpdated.Status == TaskStatus.Canceled)
+            {
+                _logger.LogInformation("OnUpdated for {actorId} was canceled in {time}", Id.ToString(), DateTimeOffset.UtcNow.Subtract(updatedAt));
+                _longRunningOnUpdated = null;
+            }
+            else
+            {
+                await ActorProxy.Create<IDocumentActor>(this.Id, this.ServiceUri).DocumentUpdatedAsync();
+            }
+
+        }
+        protected virtual Task OnUpdatedAsync()
+        {
+            return Task.CompletedTask;
+        }
+        protected override async Task OnDeactivateAsync()
+        {
+            if (_updateTimer != null)
+            {
+                UnregisterTimer(_updateTimer);
+            }
+
+            await ActorServiceProxy.Create<IActorBaseService>(ServiceUri, Id).DeactivateAsync(Id);
+
+            await base.OnDeactivateAsync();
+        }
+    }
+
     public class ActorBaseService<TDocument> : ActorService, IDocumentActorBaseService
     {
 
