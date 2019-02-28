@@ -166,14 +166,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
           
 
-            if (!string.IsNullOrEmpty(nginxProcessName))
-            {
-                var processes = Process.GetProcessesByName(nginxProcessName);
-               
-                return processes.Length != 0;
-            }
-            else
-                return false;
+             
         }
 
         private async Task WriteConfigAsync(CancellationToken token)
@@ -326,7 +319,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                             Directory.Delete(cachePath, true);
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception )
                     {
 
                     }

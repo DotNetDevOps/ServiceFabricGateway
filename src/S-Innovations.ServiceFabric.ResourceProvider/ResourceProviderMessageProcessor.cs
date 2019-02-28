@@ -59,7 +59,7 @@ namespace SInnovations.ServiceFabric.ResourceProvider
             {
                 await hostedService.StartAsync(cancellationToken);
 
-            } catch(Exception ex)
+            } catch(Exception )
             {
                 await Task.Delay(60000);
 
@@ -214,11 +214,11 @@ namespace SInnovations.ServiceFabric.ResourceProvider
 
                              return Task.FromResult(0);
                          },
-                         OnMessageCompleted = async (notice) =>
-                         {
-                             // await notice.TrackMessageCompletedAsync();
+                         //OnMessageCompleted =  (notice) =>
+                         //{
+                         //    // await notice.TrackMessageCompletedAsync();
 
-                         }
+                         //}
                      }
 
                  });

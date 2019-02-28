@@ -14,35 +14,23 @@ namespace SInnovations.ServiceFabric.GatewayService.Configuration
 
         public async Task ClearOrderAsync(string topLevelDomain)
         {
-            try
-            {
+             
                 await GetProxy<IServiceFabricIOrdersService>(topLevelDomain).ClearOrderAsync(topLevelDomain);
-            }catch(Exception ex)
-            {
-                throw;
-            }
+             
         }
 
         public async Task<string> GetRemoteLocationAsync(string topLevelDomain)
         {
-            try
-            {
+            
                 return await GetProxy<IServiceFabricIOrdersService>(topLevelDomain).GetRemoteLocationAsync(topLevelDomain);
-            }catch(Exception ex)
-            {
-                throw;
-            }
+            
         }
 
         public async Task SetRemoteLocationAsync(string domain, string location)
         {
-            try
-            {
+            
                 await GetProxy<IServiceFabricIOrdersService>(domain).SetRemoteLocationAsync(domain, location);
-            }catch(Exception ex)
-            {
-                throw;
-            }
+           
         }
     }
 

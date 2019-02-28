@@ -190,7 +190,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Communica
                     url = url.TrimEnd(new[] { '/' }) + this.UrlSuffix;
 
                     return url;
-                }catch(Exception ex)
+                }catch(Exception )
                 {
                     throw;
                 }

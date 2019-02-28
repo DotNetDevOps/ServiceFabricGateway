@@ -23,7 +23,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Configura
                     this.OnReload(); // Notify the change
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
 
             }
@@ -51,7 +51,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Configura
                     try
                     {
                         Data[$"{section.Name}:{param.Name}"] = param.IsEncrypted && !string.IsNullOrEmpty(param.Value) ? param.DecryptValue().ToUnsecureString() : param.Value;
-                    }catch(Exception ex)
+                    }catch(Exception )
                     {
                         Console.WriteLine($"Failed to add \"{section.Name}:{param.Name}\" from {param.Value} encryption={param.IsEncrypted}");
                         //logger.LogWarning("Failed to add {key} from {value} encryption={encryption}", $"{section.Name}:{param.Name}",param.Value, param.IsEncrypted);

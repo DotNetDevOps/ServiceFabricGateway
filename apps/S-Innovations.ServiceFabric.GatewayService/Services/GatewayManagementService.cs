@@ -229,7 +229,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                             hostname = itemFromQueue.Value;
                         }
-                        catch (Exception ex)
+                        catch (Exception)
                         {
                             continue;
                         }
@@ -242,7 +242,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         await CreateCertificateAsync(hostname, store, certs, certContainer, cancellationToken);
 
                     }
-                    catch (Exception ex)
+                    catch (Exception )
                     {
                         using (var tx = StateManager.CreateTransaction())
                         {
@@ -812,7 +812,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                 return clientCertificate.NotAfter.ToUniversalTime() < DateTime.UtcNow.Add(delta);
             }
-            catch (Exception ex)
+            catch (Exception )
             {
                 return true;
             }
