@@ -7,7 +7,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace SInnovations.ServiceFabric.ResourceProvider
+namespace SInnovations.ServiceFabric.Gateway.Common
 {
     public static class SemanticVersionEx
     {
