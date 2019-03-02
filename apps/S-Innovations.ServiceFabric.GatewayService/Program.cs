@@ -75,7 +75,7 @@ namespace SInnovations.ServiceFabric.GatewayService
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 
-            using (var host = new FabricHostBuilder()
+            using (var host = new FabricHostBuilder(args)
 
                 //Add fabric configuration provider
                 .ConfigureAppConfiguration((context, configurationBuilder) =>

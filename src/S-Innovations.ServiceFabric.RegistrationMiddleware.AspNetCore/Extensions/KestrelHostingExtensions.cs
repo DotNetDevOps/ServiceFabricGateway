@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.ServiceFabric.Services.Remoting;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
+using Microsoft.ServiceFabric.Services.Runtime;
 using Serilog;
 using Serilog.Sinks.ApplicationInsights.Sinks.ApplicationInsights.TelemetryConverters;
 using SInnovations.ServiceFabric.Gateway.Common.Model;
@@ -19,13 +20,67 @@ using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Services;
 using System;
 using System.Collections.Generic;
+using System.Fabric;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions
 {
+   
+    public class KestrelStatelessServiceHostOptions{
+        public string UseWebRoot { get; set; } = "artifacts";
 
+    }
+    public class KestrelStatelessServiceHost<TStatelessService, TStartup> : StatelessServiceHost<TStatelessService>
+        where TStatelessService : StatelessService
+        where TStartup : class
+    {
+        private readonly ILifetimeScope lifetimeScope;
+        private readonly ConsoleArguments arguments;
+        private readonly IOptions<KestrelStatelessServiceHostOptions> options;
+
+        public KestrelStatelessServiceHost(ILifetimeScope lifetimeScope, ConsoleArguments arguments, IOptions<KestrelStatelessServiceHostOptions> options, string serviceTypeName, IServiceProvider serviceProvider, TimeSpan timeout = default, Action<ContainerBuilder, StatelessServiceContext> scopedRegistrations = null) : base(serviceTypeName, serviceProvider, timeout, scopedRegistrations)
+        {
+            this.lifetimeScope = lifetimeScope;
+            this.arguments = arguments;
+            this.options = options;
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            if (arguments.IsServiceFabric)
+            {
+                await base.ExecuteAsync(stoppingToken);
+            }
+            else
+            {
+                var host = new WebHostBuilder()
+                 .UseKestrel()
+                 .ConfigureServices((context, services) =>
+                 {
+                     services.AddSingleton(lifetimeScope.BeginLifetimeScope());
+                     services.AddSingleton(sp => sp.GetRequiredService<ILifetimeScope>().Resolve<IServiceProviderFactory<IServiceCollection>>());
+                 })
+                 .UseContentRoot(Directory.GetCurrentDirectory())
+                 .UseWebRoot(options?.Value?.UseWebRoot ?? "artifacts")
+                 .ConfigureLogging(logbuilder =>
+                 {
+
+                     logbuilder.AddSerilog();
+                 })
+                 .UseIISIntegration()
+                 .UseStartup<TStartup>()
+                 .UseApplicationInsights()
+                 // .UseUnityServiceProvider(container)
+                 .Build();
+
+                await host.RunAsync(stoppingToken);
+            }
+        }
+    }
     public static class KestrelHostingExtensions
     {
         private static List<Action<HostBuilderContext, LoggerConfiguration>> _configurations = new List<Action<HostBuilderContext, LoggerConfiguration>>();
@@ -215,10 +270,20 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
         {
             return container.WithKestrelHosting<KestrelHostingService<TStartup>, TStartup>(serviceType, options);
         }
+
+
+        
+
         public static IHostBuilder WithKestrelHosting<TStartup>(this IHostBuilder container, string serviceType, Func<IComponentContext, KestrelHostingServiceOptions> options)
          where TStartup : class
         {
             return container.WithKestrelHosting<KestrelHostingService<TStartup>, TStartup>(serviceType, options);
+        }
+
+        public static IServiceCollection WithKestrelHosting<TStartup>(this IServiceCollection services, string serviceType, Func<IComponentContext, KestrelHostingServiceOptions> options)
+        where TStartup : class
+        {
+            return services.WithKestrelHosting<KestrelHostingService<TStartup>, TStartup>(serviceType, options);
         }
 
         public static IHostBuilder WithKestrelHosting<THostingService, TStartup>(this IHostBuilder container, string serviceType, KestrelHostingServiceOptions options)
@@ -229,6 +294,16 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
             container.WithStatelessService<THostingService>(serviceType, (child,context) => { child.RegisterInstance(options); });
             return container;
         }
+
+        public static IServiceCollection WithKestrelHosting<THostingService, TStartup>(this IServiceCollection services, string serviceType, KestrelHostingServiceOptions options)
+          where THostingService : KestrelHostingService<TStartup>
+          where TStartup : class
+        {
+
+            return services.WithStatelessService<THostingService>(serviceType, (child, context) => { child.RegisterInstance(options); });
+          
+        }
+
         public static IHostBuilder WithKestrelHosting<THostingService, TStartup>(this IHostBuilder container, string serviceType, Func<IComponentContext, KestrelHostingServiceOptions> options)
           where THostingService : KestrelHostingService<TStartup>
           where TStartup : class
@@ -238,6 +313,32 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
             return container;
         }
 
+        public static IServiceCollection WithKestrelHosting<THostingService, TStartup>(this IServiceCollection services, string serviceType, Func<IComponentContext, KestrelHostingServiceOptions> options)
+        where THostingService : KestrelHostingService<TStartup>
+        where TStartup : class
+        {
+
+           return services.WithStatelessService<THostingService,TStartup>(serviceType, (child, contex) => { child.Register(options).AsSelf().SingleInstance(); });
+            
+        }
+
+        public static IServiceCollection WithStatelessService<TStatelessService, TStartup>(
+            this IServiceCollection services,
+            string serviceTypeName,
+            Action<ContainerBuilder, StatelessServiceContext> scopedRegistrations = null,
+            TimeSpan timeout = default(TimeSpan), CancellationToken cancellationToken = default(CancellationToken)) 
+            where TStatelessService : StatelessService
+            where TStartup : class
+        {
+
+            return services.AddSingleton<IHostedService>(sp => 
+                new KestrelStatelessServiceHost<TStatelessService, TStartup>(
+                    sp.GetRequiredService<ILifetimeScope>(),
+                    sp.GetRequiredService<ConsoleArguments>(),
+                    sp.GetService<IOptions< KestrelStatelessServiceHostOptions>>(),
+                    serviceTypeName, sp, timeout, scopedRegistrations));
+
+        }
 
         public static IHostBuilder WithKestrelHosting(this IHostBuilder container, string serviceType, KestrelHostingServiceOptions options, Action<IWebHostBuilder> builder)
         {

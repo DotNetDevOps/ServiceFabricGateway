@@ -35,7 +35,7 @@
     <EntryPoint>
       <ExeHost IsExternalExecutable="1">
         <Program>dotnet</Program>
-        <Arguments>S-Innovations.ServiceFabric.GatewayService.dll</Arguments>
+        <Arguments>S-Innovations.ServiceFabric.GatewayService.dll --serviceFabric</Arguments>
         <WorkingFolder>CodePackage</WorkingFolder>
         <ConsoleRedirection FileRetentionCount="5" FileMaxSizeInKb="2048" />
       </ExeHost>
