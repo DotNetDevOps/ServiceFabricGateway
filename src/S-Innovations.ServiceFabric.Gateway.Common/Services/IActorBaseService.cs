@@ -92,8 +92,11 @@ namespace SInnovations.ServiceFabric
              null,                           // Parameter to pass to the callback method
              TimeSpan.FromMinutes(0),  // Amount of time to delay before the callback is invoked
              TimeSpan.FromSeconds(10)); // Time interval between invocations of the callback method
+
+            _logger.LogInformation("Activated {ActorId} on {ActorService}", this.Id, this.ServiceUri);
         }
 
+        private DateTimeOffset _startedUpdated = DateTimeOffset.UtcNow;
         private async Task OnUpdateCheckAsync(object arg)
         {
 
@@ -105,45 +108,47 @@ namespace SInnovations.ServiceFabric
                 if (updatedAt > _lastChecked)
                 {
 
-                    if (attempts++ > 0)
-                    {
-                        _logger.LogInformation("Running OnUpdated for {actorId} {attempt} for {updatedAt}", Id.ToString(), attempts, updatedAt);
-                    }
 
-                    _longRunningOnUpdated = Task.Run(async () => { await OnUpdatedAsync(); _lastChecked = updatedAt; attempts = 0; });
+                    _logger.LogInformation("Running OnUpdated for {actorId} {attempt} for {updatedAt}", Id.ToString(), ++attempts, updatedAt);
+
+
+                    _longRunningOnUpdated = Task.Run(async () => { _startedUpdated = DateTimeOffset.UtcNow; await OnUpdatedAsync(); _lastChecked = updatedAt; attempts = 0; });
 
 
                 }
             }
             else if (_longRunningOnUpdated.Status == TaskStatus.RanToCompletion)
             {
-                _logger.LogDebug("OnUpdated for {actorId} ran to completion for {attempt} in {time}", Id.ToString(), attempts, DateTimeOffset.UtcNow.Subtract(updatedAt));
+                _logger.LogInformation("OnUpdated for {actorId} ran to completion for {attempt} in {time}", Id.ToString(), attempts, DateTimeOffset.UtcNow.Subtract(_startedUpdated));
 
                 _longRunningOnUpdated = null;
             }
             else if (_longRunningOnUpdated.Status == TaskStatus.Faulted)
             {
-                _logger.LogInformation(_longRunningOnUpdated.Exception, "OnUpdated for {actorId} faulted in {time} and will reset", Id.ToString(), DateTimeOffset.UtcNow.Subtract(updatedAt));
+                _logger.LogInformation(_longRunningOnUpdated.Exception, "OnUpdated for {actorId} faulted in {time} and will reset", Id.ToString(), DateTimeOffset.UtcNow.Subtract(_startedUpdated));
                 _longRunningOnUpdated = null;
-                if (attempts > 1)
+                if (attempts > 2)
                 {
                     _lastChecked = updatedAt;
                 }
             }
             else if (_longRunningOnUpdated.Status == TaskStatus.Canceled)
             {
-                _logger.LogInformation("OnUpdated for {actorId} was canceled in {time}", Id.ToString(), DateTimeOffset.UtcNow.Subtract(updatedAt));
+                _logger.LogInformation("OnUpdated for {actorId} was canceled in {time}", Id.ToString(), DateTimeOffset.UtcNow.Subtract(_startedUpdated));
                 _longRunningOnUpdated = null;
             }
             else
             {
+                //Keep the actor alive
                 await ActorProxy.Create<IDocumentActor>(this.Id, this.ServiceUri).DocumentUpdatedAsync();
             }
 
         }
-        protected virtual Task OnUpdatedAsync()
+        protected virtual async Task OnUpdatedAsync()
         {
-            return Task.CompletedTask;
+            await this.StateManager.SaveStateAsync();
+            await this.StateManager.ClearCacheAsync();
+            //  return Task.CompletedTask;
         }
         protected override async Task OnDeactivateAsync()
         {
@@ -155,6 +160,8 @@ namespace SInnovations.ServiceFabric
             await ActorServiceProxy.Create<IActorBaseService>(ServiceUri, Id).DeactivateAsync(Id);
 
             await base.OnDeactivateAsync();
+
+            _logger.LogInformation("Deactivated {ActorId} on {ActorService}", this.Id, this.ServiceUri);
         }
     }
 
