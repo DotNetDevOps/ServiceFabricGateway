@@ -34,7 +34,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
 
     public class KestrelStatelessServiceHostOptions
     {
-        public string UseWebRoot { get; set; } = "artifacts";
+        public string UseWebRoot { get; set; }
 
     }
     public class KestrelStatelessServiceHost<TStatelessService, TStartup> : StatelessServiceHost<TStatelessService>
