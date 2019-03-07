@@ -15,6 +15,7 @@ using Microsoft.ServiceFabric.Services.Remoting;
 using Microsoft.ServiceFabric.Services.Remoting.Client;
 using Microsoft.ServiceFabric.Services.Runtime;
 using Serilog;
+using Serilog.Configuration;
 using Serilog.Sinks.ApplicationInsights.Sinks.ApplicationInsights.TelemetryConverters;
 using SInnovations.ServiceFabric.Gateway.Common.Model;
 using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Model;
@@ -40,38 +41,51 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
         where TStatelessService : StatelessService
         where TStartup : class
     {
-        private readonly ILifetimeScope lifetimeScope;
-        private readonly ConsoleArguments arguments;
-        private readonly IOptions<KestrelStatelessServiceHostOptions> options;
+        private readonly IServiceProvider serviceProvider;
 
-        public KestrelStatelessServiceHost(ILifetimeScope lifetimeScope, ConsoleArguments arguments, IOptions<KestrelStatelessServiceHostOptions> options, string serviceTypeName, IServiceProvider serviceProvider, TimeSpan timeout = default, Action<ContainerBuilder, StatelessServiceContext> scopedRegistrations = null) : base(serviceTypeName, serviceProvider, timeout, scopedRegistrations)
+        //private readonly ILifetimeScope lifetimeScope;
+        //private readonly ConsoleArguments arguments;
+        //private readonly IOptions<KestrelStatelessServiceHostOptions> options;
+
+        public KestrelStatelessServiceHost(string serviceTypeName, IServiceProvider serviceProvider, TimeSpan timeout = default, Action<ContainerBuilder, StatelessServiceContext> scopedRegistrations = null) : base(serviceTypeName, serviceProvider, timeout, scopedRegistrations)
         {
-            this.lifetimeScope = lifetimeScope;
-            this.arguments = arguments;
-            this.options = options;
+            this.serviceProvider = serviceProvider;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            var arguments = serviceProvider.GetRequiredService<ConsoleArguments>();
+            
             if (arguments.IsServiceFabric)
             {
                 await base.ExecuteAsync(stoppingToken);
             }
             else
             {
-
+                var options = serviceProvider.GetService<IOptions<KestrelStatelessServiceHostOptions>>();
+                var environment = serviceProvider.GetRequiredService<Microsoft.Extensions.Hosting.IHostingEnvironment>();
                 await WebHost.CreateDefaultBuilder()
                     .ConfigureServices((context, services) =>
                     {
-                        services.AddSingleton(lifetimeScope.BeginLifetimeScope());
+                        services.AddSingleton(serviceProvider.GetRequiredService < ILifetimeScope>().BeginLifetimeScope());
                         services.AddSingleton(sp => sp.GetRequiredService<ILifetimeScope>().Resolve<IServiceProviderFactory<IServiceCollection>>());
                     })
-                    .UseWebRoot(options?.Value?.UseWebRoot ?? "artifacts")
+                    .UseWebRoot(options?.Value?.UseWebRoot ?? (environment.IsDevelopment()? "artifacts":"wwwroot"))
                     .UseStartup<TStartup>()
                     .Build().RunAsync(stoppingToken);
 
 
             }
+        }
+    }
+    public static class VersionHelper
+    {
+        public static string Version<VersionType>() => 
+            $"{typeof(VersionType).Assembly.GetName().Version.Major}.{typeof(VersionType).Assembly.GetName().Version.Minor}.{ typeof(VersionType).Assembly.GetName().Version.Build}";
+
+        public static LoggerConfiguration EnrichWithVersion<VersionType>(this LoggerConfiguration configuration)
+        {
+            return configuration.Enrich.WithProperty("ApplicationVersion", Version<VersionType>());
         }
     }
     public static class KestrelHostingExtensions
@@ -141,7 +155,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
                    builder.Register(c =>
                    {
                        var configuration = c.Resolve<LoggerConfiguration>();
-
+                      
                        foreach (var modify in _configurations)
                        {
                            modify(context, configuration);
@@ -329,10 +343,7 @@ namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extension
         {
 
             return services.AddSingleton<IHostedService>(sp =>
-                new KestrelStatelessServiceHost<TStatelessService, TStartup>(
-                    sp.GetRequiredService<ILifetimeScope>(),
-                    sp.GetRequiredService<ConsoleArguments>(),
-                    sp.GetService<IOptions<KestrelStatelessServiceHostOptions>>(),
+                new KestrelStatelessServiceHost<TStatelessService, TStartup>(                
                     serviceTypeName, sp, timeout, scopedRegistrations));
 
         }
