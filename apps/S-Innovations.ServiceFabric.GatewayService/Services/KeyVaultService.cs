@@ -7,6 +7,7 @@ using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Runtime;
 using Microsoft.ServiceFabric.Services.Runtime;
 using SInnovations.ServiceFabric.Gateway.Common.Model;
+using SInnovations.ServiceFabric.Gateway.Common.Services;
 using SInnovations.ServiceFabric.Gateway.Model;
 using SInnovations.ServiceFabric.ResourceProvider;
 using SInnovations.ServiceFabric.Storage.Configuration;

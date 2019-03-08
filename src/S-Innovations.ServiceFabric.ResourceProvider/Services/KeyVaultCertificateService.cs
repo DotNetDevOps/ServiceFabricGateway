@@ -1,5 +1,6 @@
 ﻿using Microsoft.Azure.KeyVault;
 using Microsoft.Extensions.Options;
+using SInnovations.ServiceFabric.Gateway.Common.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;

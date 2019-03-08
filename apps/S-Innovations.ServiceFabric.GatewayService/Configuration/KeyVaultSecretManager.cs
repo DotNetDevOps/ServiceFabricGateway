@@ -4,6 +4,7 @@ using Microsoft.Azure.KeyVault.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureKeyVault;
 using Microsoft.Extensions.Logging;
+using SInnovations.ServiceFabric.Gateway.Common.Services;
 using SInnovations.ServiceFabric.ResourceProvider;
 using SInnovations.ServiceFabric.Storage.Configuration;
 using System;

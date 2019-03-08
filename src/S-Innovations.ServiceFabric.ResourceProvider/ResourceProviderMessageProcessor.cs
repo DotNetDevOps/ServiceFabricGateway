@@ -21,6 +21,7 @@ using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Runtime;
 using Microsoft.Extensions.Options;
 using Microsoft.Rest;
+using SInnovations.ServiceFabric.Gateway.Common.Services;
 
 namespace SInnovations.ServiceFabric.ResourceProvider
 {

@@ -6,32 +6,54 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using SInnovations.ServiceFabric.Gateway.Common.Services;
 using SInnovations.ServiceFabric.Storage.Extensions;
 
 namespace SInnovations.ServiceFabric.Storage.Clients
 {
     public class ArmClient
     {
-
-
+        
+        private AsyncExpiringLazy<AuthenticationHeaderValue> _token;
         protected HttpClient Client { get; set; }
-        public ArmClient(AuthenticationHeaderValue authorization)
+
+        public ArmClient(HttpClient client, IAzureADTokenService azureAD)
+        {
+           
+            _token = new AsyncExpiringLazy<AuthenticationHeaderValue>(async old =>
+              {
+                 
+                 
+                  return new ExpirationMetadata<AuthenticationHeaderValue>
+                  {
+                      Result = new AuthenticationHeaderValue("Bearer", await azureAD.GetTokenAsync()),
+                      ValidUntil = DateTimeOffset.UtcNow.AddMinutes(10)
+                  };
+              });
+        }
+        public ArmClient( AuthenticationHeaderValue authorization)
         {
             Client = new HttpClient();
-            Client.DefaultRequestHeaders.Authorization = authorization;
+            _token = new AsyncExpiringLazy<AuthenticationHeaderValue>((old) => Task.FromResult(new ExpirationMetadata<AuthenticationHeaderValue> {  Result = authorization}));
+           
         }
 
-        public ArmClient(string accessToken) : this(new AuthenticationHeaderValue("bearer", accessToken))
+        public ArmClient(string accessToken) : this(new AuthenticationHeaderValue("Bearer", accessToken))
         {
 
         }
 
-        public Task<T> ListKeysAsync<T>(string resourceId, string apiVersion)
+        public async Task<T> ListKeysAsync<T>(string resourceId, string apiVersion)
         {
+         
             var resourceUrl = $"https://management.azure.com/{resourceId.Trim('/')}/listkeys?api-version={apiVersion}";
+            var msg = new HttpRequestMessage(HttpMethod.Post, resourceUrl);
+            msg.Content = new StringContent(string.Empty);
+            msg.Headers.Authorization = await _token;
 
-            return Client.PostAsync(resourceUrl, new StringContent(string.Empty))
-                .As<T>();
+            return await Client.SendAsync(msg).As<T>();
+
+          
         }
 
         public Task<T> PatchAsync<T>(string resourceId, T value, string apiVersion)
