@@ -19,7 +19,7 @@ namespace SInnovations.ServiceFabric.Storage.Clients
 
         public ArmClient(HttpClient client, IAzureADTokenService azureAD)
         {
-           
+            Client = client;
             _token = new AsyncExpiringLazy<AuthenticationHeaderValue>(async old =>
               {
                  
