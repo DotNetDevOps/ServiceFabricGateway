@@ -18,6 +18,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="2.2.0" />
     <PackageReference Include="Microsoft.ServiceFabric.Actors" Version="3.3.638" />
     <PackageReference Include="Microsoft.ServiceFabric.Services" Version="3.3.638" />
   </ItemGroup>

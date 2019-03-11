@@ -9,21 +9,26 @@ using Microsoft.ServiceFabric.Services.Communication.Client;
 namespace SInnovations.ServiceFabric.Gateway.Communication
 {
 
-    public class HttpCommunicationClient : HttpClient, ICommunicationClient
+    public class HttpCommunicationClient : ICommunicationClient
     {  
-        public HttpCommunicationClient()
-            : base(new HttpClientHandler() { AllowAutoRedirect = false, UseCookies = false })
-        {
-        }
+        public HttpClient HttpClient { get; set; }
+        //public HttpCommunicationClient()
+        //    : base(new HttpClientHandler() { AllowAutoRedirect = false, UseCookies = false })
+        //{
+        //}
 
-        public HttpCommunicationClient(HttpMessageHandler handler)
-            : base(handler)
-        {
-        }
+        //public HttpCommunicationClient(HttpMessageHandler handler)
+        //    : base(handler)
+        //{
+        //}
 
-        public HttpCommunicationClient(HttpMessageHandler handler, bool disposeHandler)
-            : base(handler, disposeHandler)
-        {       
+        //public HttpCommunicationClient(HttpMessageHandler handler, bool disposeHandler)
+        //    : base(handler, disposeHandler)
+        //{       
+        //}
+        public HttpCommunicationClient(HttpClient client)
+        {
+            HttpClient = client;
         }
 
         #region ICommunicationClient
