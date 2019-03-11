@@ -65,28 +65,15 @@ namespace SInnovations.ServiceFabric.Gateway.Communication
 
        
 
-        public string BearerToken { get; set; }
+      //  public string BearerToken { get; set; }
 
-
-        public Task<HttpResponseMessage> GetAsync(string pathAndQuery)
+        public Task<HttpResponseMessage> SendAsync(Func<HttpRequestMessage> requestGenerator)
         {
-            return InvokeWithRetryAsync(async (client) =>
+            return InvokeWithRetryAsync( (client) =>
             {
-                if (!string.IsNullOrEmpty(BearerToken))
-                {
-                    client.HttpClient.DefaultRequestHeaders.Authorization = 
-                        new AuthenticationHeaderValue("Bearer", BearerToken);
-                }
-              
-               
-
-
-                HttpResponseMessage response = await client.HttpClient.GetAsync(new Uri(client.HttpClient.BaseAddress, pathAndQuery));
-                return response;
+                return client.HttpClient.SendAsync(requestGenerator());
             });
-        }
-
-
+        } 
 
     }
 
