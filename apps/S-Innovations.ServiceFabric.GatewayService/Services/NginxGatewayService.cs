@@ -441,7 +441,7 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                             // if (a.IPAddressOrFQDN == Context.NodeContext.IPAddressOrFQDN)
                             if (!test.Contains(a.ReverseProxyLocation))
                             {
-                                var upstreamName = a.ServiceName.AbsoluteUri.Split('/').Last().Replace('.', '_');
+                                var upstreamName = a.ServiceName.AbsoluteUri.Split('/').Last().Replace('.', '_').ToLower();
 
                                 var url = a.BackendPath;
                                 url = "http://" + upstreamName;
