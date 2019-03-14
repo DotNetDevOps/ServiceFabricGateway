@@ -242,8 +242,9 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         await CreateCertificateAsync(hostname, store, certs, certContainer, cancellationToken);
 
                     }
-                    catch (Exception )
+                    catch (Exception ex)
                     {
+                        this.logger.LogWarning(ex, "Failed to create certificate and requeue {hostname}",hostname);
                         using (var tx = StateManager.CreateTransaction())
                         {
                             await store.EnqueueAsync(tx, hostname);
@@ -309,22 +310,22 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
 
 
-                    var stateNotNull = certInfo != null;
-                    var VersionMatches = stateNotNull && certInfo.Version == CertGenerationState.CERTGENERATION_VERSION;
-                    var hasRunValid = stateNotNull && certInfo.RunAt.HasValue && certInfo.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14));
+                    //var stateNotNull = certInfo != null;
+                    //var VersionMatches = stateNotNull && certInfo.Version == CertGenerationState.CERTGENERATION_VERSION;
+                    //var hasRunValid = stateNotNull && certInfo.RunAt.HasValue && certInfo.RunAt.Value > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(14));
 
-                    logger.LogInformation("Located {@state} for {hostname} stateNotNull={stateNotNull} VersionMatches={VersionMatches} hasRunValid={hasRunValid}", certInfo, hostname, stateNotNull, VersionMatches, hasRunValid);
+                    //logger.LogInformation("Located {@state} for {hostname} stateNotNull={stateNotNull} VersionMatches={VersionMatches} hasRunValid={hasRunValid}", certInfo, hostname, stateNotNull, VersionMatches, hasRunValid);
 
-                    if (stateNotNull && !certInfo.Completed && certInfo.RunAt.HasValue && certInfo.RunAt < DateTimeOffset.UtcNow.Subtract(TimeSpan.FromMinutes(10)))
-                    {
-                        logger.LogInformation("creating new cert for {hostname} due not completed within 10min", hostname);
+                    //if (stateNotNull && !certInfo.Completed && certInfo.RunAt.HasValue && certInfo.RunAt < DateTimeOffset.UtcNow.Subtract(TimeSpan.FromMinutes(10)))
+                    //{
+                    //    logger.LogInformation("creating new cert for {hostname} due not completed within 10min", hostname);
 
-                    }
-                    else if (stateNotNull && VersionMatches && hasRunValid)
-                    {
-                        logger.LogInformation("certificate for {hostname} already completed", hostname);
-                        return;
-                    }
+                    //}
+                    //else if (stateNotNull && VersionMatches && hasRunValid)
+                    //{
+                    //    logger.LogInformation("certificate for {hostname} already completed", hostname);
+                    //    return;
+                    //}
                 }
 
 
