@@ -5,19 +5,13 @@ using Serilog;
 using SInnovations.LetsEncrypt;
 using SInnovations.ServiceFabric.GatewayService.Configuration;
 using SInnovations.ServiceFabric.GatewayService.Services;
-using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore;
-using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Configuration;
+using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions;
 using SInnovations.ServiceFabric.ResourceProvider;
 using SInnovations.ServiceFabric.Storage.Configuration;
 using SInnovations.ServiceFabric.Storage.Extensions;
 using SInnovations.ServiceFabric.Storage.Services;
 using System;
-using System.Threading;
 using System.Threading.Tasks;
-using SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Extensions;
-using System.IO;
-using System.Reflection;
-using Microsoft.AspNetCore.Hosting.Internal;
 
 namespace SInnovations.ServiceFabric.GatewayService
 {

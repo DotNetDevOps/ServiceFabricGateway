@@ -10,11 +10,5 @@ using System.Threading.Tasks;
 
 namespace SInnovations.ServiceFabric.RegistrationMiddleware.AspNetCore.Configuration
 {
-    public static class ServiceFabricConfigExtensions
-    {
-        public static IConfigurationBuilder AddServiceFabricConfig(this IConfigurationBuilder builder, string packageName)
-        {
-            return builder.Add(new ServiceFabricConfigSource(packageName)); 
-        }
-    }
+   
 }

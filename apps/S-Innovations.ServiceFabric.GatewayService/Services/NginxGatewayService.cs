@@ -370,10 +370,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         {
 
                             sb.AppendLine($"\t\tlisten       {endpoint.Port};");
-                            if (sslOn)
-                            {
-                                sb.AppendLine($"\t\tlisten       {sslEndpoint.Port} ssl;");
-                            }
+
+                            sslOn = await WriteSSL(sslOn, sb, serverGroup.Value.First(), serverName, sslEndpoint.Port, token);
 
                             sb.AppendLine($"\t\tserver_name  {serverName.Substring(4)};");
                             sb.AppendLine($"\t\treturn 301 $scheme://{serverName}$request_uri;");
@@ -387,10 +385,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
                         {
 
                             sb.AppendLine($"\t\tlisten       {endpoint.Port};");
-                            if (sslOn)
-                            {
-                                sb.AppendLine($"\t\tlisten       {sslEndpoint.Port} ssl;");
-                            }
+
+                            sslOn = await WriteSSL(sslOn, sb, serverGroup.Value.First(), serverName, sslEndpoint.Port, token);
 
                             sb.AppendLine($"\t\tserver_name  www.{serverName};");
                             sb.AppendLine($"\t\treturn 301 $scheme://{serverName}$request_uri;");
@@ -410,27 +406,8 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
                         sb.AppendLine($"\t\tlisten       {endpoint.Port};");
 
-                        var sslsb = new StringBuilder();
-
-                        if (sslOn)
-                        {
-                            sslsb.AppendLine($"\t\tlisten       {sslEndpoint.Port} ssl;");
-                            sslsb.AppendLine($"\t\tserver_name  {serverName};");
-                            sslsb.AppendLine();
-
-                            sslOn = await SetupSsl(sslsb, serverGroup.Value.First(), serverName, token);
-                        }
-                         
-
-                        if(sslOn)
-                        {
-                            sb.AppendLine(sslsb.ToString());
-                        }
-                        else
-                        {
-                            sb.AppendLine($"\t\tserver_name  {serverName};");
-                            sb.AppendLine();
-                        }
+                        sslOn = await WriteSSL(sslOn,sb, serverGroup.Value.First(),serverName, sslEndpoint.Port,token);
+                       
 
                         sb.AppendLine("\t\tlarge_client_header_buffers 4 16k;");
 
@@ -472,7 +449,31 @@ namespace SInnovations.ServiceFabric.GatewayService.Services
 
             File.WriteAllText(NginxConfigFullPath, sb.ToString());
         }
+        private async Task<bool> WriteSSL(bool sslOn, StringBuilder sb, GatewayServiceRegistrationData gatewayServiceRegistrationData, string serverName,int port, CancellationToken token)
+        {
+            var sslsb = new StringBuilder();
 
+            if (sslOn)
+            {
+                sslsb.AppendLine($"\t\tlisten       {port} ssl;");
+                sslsb.AppendLine($"\t\tserver_name  {serverName};");
+                sslsb.AppendLine();
+
+                sslOn = await SetupSsl(sslsb, gatewayServiceRegistrationData, serverName, token);
+            }
+
+
+            if (sslOn)
+            {
+                sb.AppendLine(sslsb.ToString());
+            }
+            else
+            {
+                sb.AppendLine($"\t\tserver_name  {serverName};");
+                sb.AppendLine();
+            }
+            return sslOn;
+        }
         private async Task<bool> SetupSsl(StringBuilder sb, GatewayServiceRegistrationData gatewayServiceRegistrationData, string serverName, CancellationToken token)
         {
 
