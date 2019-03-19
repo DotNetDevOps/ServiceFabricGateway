@@ -28,7 +28,7 @@ namespace SInnovations.ServiceFabric
 
     public interface IDocumentActorBaseService : IActorBaseService, IService, IActorService
     {
-        Task SaveDocumentAsync(ActorId actorId, DocumentWrapper document, CancellationToken cancellationToken);
+       // Task SaveDocumentAsync(ActorId actorId, DocumentWrapper document, CancellationToken cancellationToken);
         Task<object> GetDocumentAsync(ActorId actorId, CancellationToken requestAborted);
     }
 
@@ -64,7 +64,8 @@ namespace SInnovations.ServiceFabric
 
         public virtual Task DocumentUpdatedAsync()
         {
-            return Task.CompletedTask;
+            return this.SaveStateAsync();
+         //   return Task.CompletedTask;
         }
 
         public virtual Task InitializeAsync()
@@ -240,15 +241,17 @@ namespace SInnovations.ServiceFabric
 
                     }
 
-                    if (!await StateProvider.LoadStateAsync<bool>(actorid, Constants.ActivatedStateName, cancellationToken))
-                    {
-                        ActorProxy.Create<IDocumentActor>(actorid, this.Context.ServiceName).DocumentUpdatedAsync().FireAndForget();
-                    }
+                    //if (!await StateProvider.LoadStateAsync<bool>(actorid, Constants.ActivatedStateName, cancellationToken))
+                    //{
+                    //    ActorProxy.Create<IDocumentActor>(actorid, this.Context.ServiceName).DocumentUpdatedAsync().FireAndForget();
+                    //}
                 }
                 else if (initializeOnMissing)
                 {
                     ActorProxy.Create<IDocumentActor>(actorid, this.Context.ServiceName).InitializeAsync().FireAndForget();
                 }
+
+                ActorProxy.Create<IDocumentActor>(actorid, this.Context.ServiceName).DocumentUpdatedAsync().FireAndForget();
             }
             catch (Exception ex)
             {
@@ -257,13 +260,13 @@ namespace SInnovations.ServiceFabric
             }
         }
 
-        public async Task SaveDocumentAsync(ActorId actorId, DocumentWrapper document, CancellationToken cancellationToken)
+        public async Task SaveDocumentAsync(ActorId actorId, TDocument document, CancellationToken cancellationToken)
         {
 
 
             await StateProvider.SaveStateAsync(actorId,
                     new ActorStateChange[] {
-                         new ActorStateChange("Document", typeof(TDocument), document.Document,
+                         new ActorStateChange("Document", typeof(TDocument), document,
                          await StateProvider.ContainsStateAsync(actorId, "Document", cancellationToken) ? StateChangeKind.Update: StateChangeKind.Add)
                 }, cancellationToken);
 
