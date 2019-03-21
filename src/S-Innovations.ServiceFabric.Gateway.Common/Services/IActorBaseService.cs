@@ -100,6 +100,7 @@ namespace SInnovations.ServiceFabric
         }
 
         private DateTimeOffset _startedUpdated = DateTimeOffset.UtcNow;
+        private DateTimeOffset _endUpdated = DateTimeOffset.UtcNow;
         private async Task OnUpdateCheckAsync(object arg)
         {
 
@@ -115,20 +116,20 @@ namespace SInnovations.ServiceFabric
                     _logger.LogInformation("Running OnUpdated for {actorId} {attempt} for {updatedAt}", Id.ToString(), ++attempts, updatedAt);
 
 
-                    _longRunningOnUpdated = Task.Run(async () => { _startedUpdated = DateTimeOffset.UtcNow; await OnUpdatedAsync(); _lastChecked = updatedAt; attempts = 0; });
+                    _longRunningOnUpdated = Task.Run(async () => { try { _startedUpdated = DateTimeOffset.UtcNow; await OnUpdatedAsync(); } finally { _endUpdated = DateTimeOffset.UtcNow; } _lastChecked = updatedAt; attempts = 0; });
 
 
                 }
             }
             else if (_longRunningOnUpdated.Status == TaskStatus.RanToCompletion)
             {
-                _logger.LogInformation("OnUpdated for {actorId} ran to completion for {attempt} in {time}", Id.ToString(), attempts, DateTimeOffset.UtcNow.Subtract(_startedUpdated));
+                _logger.LogInformation("OnUpdated for {actorId} ran to completion for {attempt} in {time}", Id.ToString(), attempts, _endUpdated.Subtract(_startedUpdated));
 
                 _longRunningOnUpdated = null;
             }
             else if (_longRunningOnUpdated.Status == TaskStatus.Faulted)
             {
-                _logger.LogInformation(_longRunningOnUpdated.Exception, "OnUpdated for {actorId} faulted in {time} and will reset", Id.ToString(), DateTimeOffset.UtcNow.Subtract(_startedUpdated));
+                _logger.LogInformation(_longRunningOnUpdated.Exception, "OnUpdated for {actorId} faulted in {time} and will reset", Id.ToString(), _endUpdated.Subtract(_startedUpdated));
                 _longRunningOnUpdated = null;
                 if (attempts > 2)
                 {
@@ -137,7 +138,7 @@ namespace SInnovations.ServiceFabric
             }
             else if (_longRunningOnUpdated.Status == TaskStatus.Canceled)
             {
-                _logger.LogInformation("OnUpdated for {actorId} was canceled in {time}", Id.ToString(), DateTimeOffset.UtcNow.Subtract(_startedUpdated));
+                _logger.LogInformation("OnUpdated for {actorId} was canceled in {time}", Id.ToString(), _endUpdated.Subtract(_startedUpdated));
                 _longRunningOnUpdated = null;
             }
             else
@@ -159,8 +160,9 @@ namespace SInnovations.ServiceFabric
             {
                 UnregisterTimer(_updateTimer);
             }
-
-            await ActorServiceProxy.Create<IActorBaseService>(ServiceUri, Id).DeactivateAsync(Id);
+            var service = this.ActorService as ActorBaseService<T>;
+            await service.DeactivateAsync(Id); ;
+           // await ActorServiceProxy.Create<IActorBaseService>(ServiceUri, Id).DeactivateAsync(Id);
 
             await base.OnDeactivateAsync();
 
@@ -179,7 +181,7 @@ namespace SInnovations.ServiceFabric
             IActorStateProvider stateProvider = null,
             ActorServiceSettings settings = null) : base(context, actorTypeInfo, actorFactory, stateManagerFactory, stateProvider, settings)
         {
-
+            
         }
         public async Task<bool> ActorExists(ActorId actorId, CancellationToken cancellationToken)
         {
@@ -193,7 +195,7 @@ namespace SInnovations.ServiceFabric
                 throw;
             }
         }
-
+      
         public async Task DeactivateAsync(ActorId actorId)
         {
             try
@@ -202,6 +204,7 @@ namespace SInnovations.ServiceFabric
             }
             catch (Exception ex)
             {
+                
                 Console.WriteLine(ex);
                 throw;
             }
