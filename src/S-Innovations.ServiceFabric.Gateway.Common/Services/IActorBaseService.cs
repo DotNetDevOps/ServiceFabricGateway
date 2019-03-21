@@ -41,6 +41,7 @@ namespace SInnovations.ServiceFabric
     {
         Task InitializeAsync();
         Task DocumentUpdatedAsync();
+        Task SetLastUpdatedAsync(DateTimeOffset time);
     }
     public static class TaskHelper
     {
@@ -60,7 +61,7 @@ namespace SInnovations.ServiceFabric
         }
         public Task<T> DocumentAsync => StateManager.GetStateAsync<T>(DocumentStateKey);
         public Task<bool> HasDocumentAsync => StateManager.ContainsStateAsync(DocumentStateKey);
-        public Task SetDocumentAsync(T document) => StateManager.SetStateAsync(DocumentStateKey, document).ContinueWith(c => LastUpdated = DateTimeOffset.UtcNow);
+        public Task SetDocumentAsync(T document) => StateManager.SetStateAsync(DocumentStateKey, document).ContinueWith(c => SetLastUpdatedAsync(DateTimeOffset.UtcNow));
 
         public virtual  Task DocumentUpdatedAsync()
         {
@@ -76,7 +77,9 @@ namespace SInnovations.ServiceFabric
         }
 
         private IActorTimer _updateTimer;
-        protected DateTimeOffset? LastUpdated { get; set; }
+       // protected DateTimeOffset? LastUpdated { get; set; }
+
+        public async Task  SetLastUpdatedAsync(DateTimeOffset time) { await StateManager.SetStateAsync(Constants.LastUpdatedStateName, time);   }
 
 
         protected DateTimeOffset _lastChecked = DateTimeOffset.MinValue;
@@ -101,10 +104,12 @@ namespace SInnovations.ServiceFabric
 
         private DateTimeOffset _startedUpdated = DateTimeOffset.UtcNow;
         private DateTimeOffset _endUpdated = DateTimeOffset.UtcNow;
+
+
         private async Task OnUpdateCheckAsync(object arg)
         {
 
-            var updatedAt = await StateManager.GetStateAsync<DateTimeOffset>(Constants.LastUpdatedStateName);
+            var updatedAt =  await StateManager.GetStateAsync<DateTimeOffset>(Constants.LastUpdatedStateName);
 
             if (_longRunningOnUpdated == null)
             {
@@ -148,11 +153,11 @@ namespace SInnovations.ServiceFabric
             }
 
         }
-        protected virtual async Task OnUpdatedAsync()
+        protected virtual  Task OnUpdatedAsync()
         {
-            await this.StateManager.SaveStateAsync();
-            await this.StateManager.ClearCacheAsync();
-            //  return Task.CompletedTask;
+            //await this.StateManager.SaveStateAsync();
+            //await this.StateManager.ClearCacheAsync();
+              return Task.CompletedTask;
         }
         protected override async Task OnDeactivateAsync()
         {
@@ -225,10 +230,11 @@ namespace SInnovations.ServiceFabric
 
                         if (time > old)
                         {
-                            await StateProvider.SaveStateAsync(actorid,
-                                 new ActorStateChange[] {
-                            new ActorStateChange(Constants.LastUpdatedStateName, typeof(DateTimeOffset), time, StateChangeKind.Update)
-                             }, cancellationToken);
+                            await ActorProxy.Create<IDocumentActor>(actorid, this.Context.ServiceName).SetLastUpdatedAsync(time);
+                            //await StateProvider.SaveStateAsync(actorid,
+                            //     new ActorStateChange[] {
+                            //new ActorStateChange(Constants.LastUpdatedStateName, typeof(DateTimeOffset), time, StateChangeKind.Update)
+                            // }, cancellationToken);
                         }
                         else
                         {
@@ -268,6 +274,7 @@ namespace SInnovations.ServiceFabric
         public async Task SaveDocumentAsync(ActorId actorId, TDocument document, CancellationToken cancellationToken)
         {
 
+             
 
             await StateProvider.SaveStateAsync(actorId,
                     new ActorStateChange[] {
