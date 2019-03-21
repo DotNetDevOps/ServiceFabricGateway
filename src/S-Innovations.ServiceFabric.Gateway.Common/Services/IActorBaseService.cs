@@ -62,10 +62,12 @@ namespace SInnovations.ServiceFabric
         public Task<bool> HasDocumentAsync => StateManager.ContainsStateAsync(DocumentStateKey);
         public Task SetDocumentAsync(T document) => StateManager.SetStateAsync(DocumentStateKey, document).ContinueWith(c => LastUpdated = DateTimeOffset.UtcNow);
 
-        public virtual Task DocumentUpdatedAsync()
+        public virtual  Task DocumentUpdatedAsync()
         {
-            return this.SaveStateAsync();
-         //   return Task.CompletedTask;
+
+         //   await  this.SaveStateAsync();
+         //   await this.StateManager.ClearCacheAsync();
+            return Task.CompletedTask;
         }
 
         public virtual Task InitializeAsync()
