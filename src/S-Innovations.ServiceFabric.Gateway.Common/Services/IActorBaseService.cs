@@ -118,7 +118,7 @@ namespace SInnovations.ServiceFabric
                 {
 
 
-                    _logger.LogInformation("Running OnUpdated for {actorId} {attempt} for {updatedAt}", Id.ToString(), ++attempts, updatedAt);
+                    _logger.LogDebug("Running OnUpdated for {actorId} {attempt} for {updatedAt}", Id.ToString(), ++attempts, updatedAt);
 
 
                     _longRunningOnUpdated = Task.Run(async () => { try { _startedUpdated = DateTimeOffset.UtcNow; await OnUpdatedAsync(); } finally { _endUpdated = DateTimeOffset.UtcNow; } _lastChecked = updatedAt; attempts = 0; });
@@ -128,22 +128,23 @@ namespace SInnovations.ServiceFabric
             }
             else if (_longRunningOnUpdated.Status == TaskStatus.RanToCompletion)
             {
-                _logger.LogInformation("OnUpdated for {actorId} ran to completion for {attempt} in {time}", Id.ToString(), attempts, _endUpdated.Subtract(_startedUpdated));
+                _logger.LogDebug("OnUpdated for {actorId} ran to completion for {attempt} in {time}", Id.ToString(), attempts, _endUpdated.Subtract(_startedUpdated));
 
                 _longRunningOnUpdated = null;
             }
             else if (_longRunningOnUpdated.Status == TaskStatus.Faulted)
             {
-                _logger.LogInformation(_longRunningOnUpdated.Exception, "OnUpdated for {actorId} faulted in {time} and will reset", Id.ToString(), _endUpdated.Subtract(_startedUpdated));
+                _logger.LogDebug(_longRunningOnUpdated.Exception, "OnUpdated for {actorId} faulted in {time} and will reset", Id.ToString(), _endUpdated.Subtract(_startedUpdated));
                 _longRunningOnUpdated = null;
                 if (attempts > 2)
                 {
+                    _logger.LogWarning(_longRunningOnUpdated.Exception, "OnUpdated for {actorId} faulted {attempts} in {time} and will skip resetting",Id.ToString(),attempts, _endUpdated.Subtract(_startedUpdated));
                     _lastChecked = updatedAt;
                 }
             }
             else if (_longRunningOnUpdated.Status == TaskStatus.Canceled)
             {
-                _logger.LogInformation("OnUpdated for {actorId} was canceled in {time}", Id.ToString(), _endUpdated.Subtract(_startedUpdated));
+                _logger.LogDebug("OnUpdated for {actorId} was canceled in {time}", Id.ToString(), _endUpdated.Subtract(_startedUpdated));
                 _longRunningOnUpdated = null;
             }
             else
