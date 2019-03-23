@@ -99,7 +99,7 @@ namespace SInnovations.ServiceFabric
              TimeSpan.FromMinutes(0),  // Amount of time to delay before the callback is invoked
              TimeSpan.FromSeconds(10)); // Time interval between invocations of the callback method
 
-            _logger.LogInformation("Activated {ActorId} on {ActorService}", this.Id, this.ServiceUri);
+            _logger.LogDebug("Activated {ActorId} on {ActorService}", this.Id, this.ServiceUri);
         }
 
         private DateTimeOffset _startedUpdated = DateTimeOffset.UtcNow;
@@ -172,7 +172,7 @@ namespace SInnovations.ServiceFabric
 
             await base.OnDeactivateAsync();
 
-            _logger.LogInformation("Deactivated {ActorId} on {ActorService}", this.Id, this.ServiceUri);
+            _logger.LogDebug("Deactivated {ActorId} on {ActorService}", this.Id, this.ServiceUri);
         }
     }
 
