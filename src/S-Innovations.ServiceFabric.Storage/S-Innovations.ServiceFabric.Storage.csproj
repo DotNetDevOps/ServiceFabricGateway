@@ -12,7 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotNetDevOps.ServiceFabric.Hosting" Version="1.0.0-ci-20190415-01" />
+    <PackageReference Include="DotNetDevOps.ServiceFabric.Hosting" Version="1.0.0-ci-20190416-01" />
     <PackageReference Include="IdentityModel" Version="3.10.7" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.AzureStorage" Version="2.2.0" />
